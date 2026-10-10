@@ -3,17 +3,28 @@ import { useUnassignedCartCreations } from '../hooks/useUnassignedCartCreations'
 import { formatTimestamp, statusColor } from '@/shared/utils/cart';
 import { ConfirmModal } from '@/shared/components/ConfirmModal';
 import { UnassignedCartCardSkeleton } from '@/shared/components/UnassignedCartCardSkeleton';
+import { Pagination } from '@/shared/components/Pagination';
 import type { UnassignedCartCreation } from '@/core/entities/cartCreation';
 
 /**
- * Full-page view — unassigned cart creations (admin queue).
- * Duolingo-style list: friendly status chips, bold numbers, action button.
+ * Full-page view — unassigned cart creations (admin queue, paginated).
+ * Duolingo-style list + pagination footer.
  *
  * "Assign" is gated behind a Setuju / Tidak Setuju confirmation modal so an
  * accidental click can't change the queue.
  */
 export function UnassignedCartsPage() {
-  const { items, loading, error, reload } = useUnassignedCartCreations();
+  const {
+    items,
+    meta,
+    page,
+    limit,
+    loading,
+    error,
+    goToPage,
+    setPageSize,
+    reload,
+  } = useUnassignedCartCreations();
   const [pending, setPending] = useState<UnassignedCartCreation | null>(null);
 
   function onConfirmAssign() {
@@ -115,6 +126,17 @@ export function UnassignedCartsPage() {
             </article>
           ))}
         </div>
+      )}
+
+      {meta && items.length > 0 && (
+        <Pagination
+          meta={meta}
+          page={page}
+          limit={limit}
+          disabled={loading}
+          onPageChange={goToPage}
+          onLimitChange={setPageSize}
+        />
       )}
 
       <ConfirmModal

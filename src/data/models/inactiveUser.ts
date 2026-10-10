@@ -14,18 +14,26 @@ export interface InactiveUserDTO {
   user_phone: string;
 }
 
+export interface InactiveUsersMetaDTO {
+  limit?: number;
+  page?: number;
+  total?: number;
+  total_pages?: number;
+}
+
+export interface InactiveUsersDataDTO {
+  items: InactiveUserDTO[];
+  meta: InactiveUsersMetaDTO;
+}
+
 export interface InactiveUsersResponseDTO {
   code: number;
-  data: InactiveUserDTO[];
+  data: InactiveUsersDataDTO;
   errors: string;
   message: string;
-  meta: {
-    limit?: number;
-    page?: number;
-    total?: number;
-    total_pages?: number;
-  };
+  meta: InactiveUsersMetaDTO;
   request_id: string;
   success: boolean;
   timestamp: string;
 }
+

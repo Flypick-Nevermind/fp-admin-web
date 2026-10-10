@@ -2,13 +2,24 @@ import { useInactiveUsers } from '../hooks/useInactiveUsers';
 import { formatTimestamp } from '@/shared/utils/cart';
 import { userActiveState } from '@/shared/utils/userStatus';
 import { InactiveUserRowSkeleton } from '@/shared/components/InactiveUserRowSkeleton';
+import { Pagination } from '@/shared/components/Pagination';
 
 /**
- * Full-page view — inactive / prospect users (admin list).
- * Duolingo-style rows: bold names, soft contact lines, active badge.
+ * Full-page view — inactive / prospect users (admin list, paginated).
+ * Duolingo-style rows + a Duolingo-style pagination footer.
  */
 export function InactiveUsersPage() {
-  const { items, loading, error, reload } = useInactiveUsers();
+  const {
+    items,
+    meta,
+    page,
+    limit,
+    loading,
+    error,
+    goToPage,
+    setPageSize,
+    reload,
+  } = useInactiveUsers();
 
   return (
     <div className="flex flex-col gap-6">
@@ -100,6 +111,17 @@ export function InactiveUsersPage() {
               </div>
             </article>
           ))}
+
+          {meta && (
+            <Pagination
+              meta={meta}
+              page={page}
+              limit={limit}
+              disabled={loading}
+              onPageChange={goToPage}
+              onLimitChange={setPageSize}
+            />
+          )}
         </div>
       )}
     </div>

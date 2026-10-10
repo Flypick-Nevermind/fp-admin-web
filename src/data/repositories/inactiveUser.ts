@@ -1,7 +1,12 @@
-import type { InactiveUserRepository } from '@/core/usecases/inactiveUser';
+import type {
+  InactiveUserRepository,
+  InactiveUserQuery,
+  InactiveUserPage,
+} from '@/core/usecases/inactiveUser';
 import type { InactiveUser } from '@/core/entities/inactiveUser';
+import type { PageMeta } from '@/core/entities/page';
 import type { InactiveUserDTO } from '@/data/models/inactiveUser';
-import { InactiveUserDataSource } from '@/data/datasources/inactiveUser';
+import { InactiveUserDataSource, type InactiveQueryParams } from '@/data/datasources/inactiveUser';
 
 /**
  * Concrete data-layer implementation of the InactiveUserRepository port.
@@ -14,10 +19,35 @@ export class InactiveUserRepositoryImpl implements InactiveUserRepository {
     this.source = new InactiveUserDataSource();
   }
 
-  async getInactive(authorization?: string): Promise<InactiveUser[]> {
-    const response = await this.source.fetchInactive(authorization);
-    return response.data.map(toEntity);
+  async getInactive(
+    query: InactiveUserQuery,
+    authorization?: string,
+  ): Promise<InactiveUserPage> {
+    const params: InactiveQueryParams = { page: query.page, limit: query.limit };
+    const response = await this.source.fetchInactive(params, authorization);
+    const meta = response.data.meta;
+    return {
+      items: response.data.items.map(toEntity),
+      meta: toMeta(meta, query),
+    };
   }
+}
+
+function toMeta(
+  dto: {
+    limit?: number;
+    page?: number;
+    total?: number;
+    total_pages?: number;
+  },
+  query: InactiveUserQuery,
+): PageMeta {
+  return {
+    page: dto.page ?? query.page,
+    limit: dto.limit ?? query.limit,
+    total: dto.total ?? 0,
+    total_pages: dto.total_pages ?? 0,
+  };
 }
 
 function toEntity(dto: InactiveUserDTO): InactiveUser {

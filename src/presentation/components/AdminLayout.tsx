@@ -29,13 +29,13 @@ export function AdminLayout() {
   }
 
   return (
-    <div className="flex min-h-screen bg-duo-surface">
+    <div className="flex h-screen bg-duo-surface overflow-hidden">
       {/* Sidebar */}
       <aside
         className={`
           shrink-0 border-r-2 border-duo-border bg-duo-bg
           ${collapsed ? 'w-20' : 'w-60'}
-          transition-all duration-200 flex flex-col
+          h-full transition-all duration-200 flex flex-col
         `}
       >
         <div className="flex items-center gap-2 px-5 py-5">
@@ -47,7 +47,7 @@ export function AdminLayout() {
           )}
         </div>
 
-        <nav className="flex-1 px-3 flex flex-col gap-1">
+        <nav className="flex-1 min-h-0 px-3 py-2 flex flex-col gap-1 overflow-y-auto">
           {links.map((l) => {
             const active =
               l.to === '/admin'

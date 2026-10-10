@@ -1,9 +1,15 @@
-import type { CartCreationRepository } from '@/core/usecases/cartCreation';
+import type {
+  CartCreationRepository,
+  CartCreationQuery,
+  CartCreationPage,
+} from '@/core/usecases/cartCreation';
 import type { UnassignedCartCreation, CartCreationUser } from '@/core/entities/cartCreation';
-import { CartCreationDataSource } from '@/data/datasources/cartCreation';
+import type { PageMeta } from '@/core/entities/page';
+import { CartCreationDataSource, type CartCreationQueryParams } from '@/data/datasources/cartCreation';
 import type {
   UnassignedCartCreationDTO,
   CartCreationUserDTO,
+  CartCreationsMetaDTO,
 } from '@/data/models/cartCreation';
 
 /**
@@ -17,10 +23,26 @@ export class CartCreationRepositoryImpl implements CartCreationRepository {
     this.source = new CartCreationDataSource();
   }
 
-  async getUnassigned(authorization?: string): Promise<UnassignedCartCreation[]> {
-    const response = await this.source.fetchUnassigned(authorization);
-    return response.data.map(toEntity);
+  async getUnassigned(
+    query: CartCreationQuery,
+    authorization?: string,
+  ): Promise<CartCreationPage> {
+    const params: CartCreationQueryParams = { page: query.page, limit: query.limit };
+    const response = await this.source.fetchUnassigned(params, authorization);
+    return {
+      items: response.data.items.map(toEntity),
+      meta: toMeta(response.data.meta, query),
+    };
   }
+}
+
+function toMeta(dto: CartCreationsMetaDTO, query: CartCreationQuery): PageMeta {
+  return {
+    page: dto.page ?? query.page,
+    limit: dto.limit ?? query.limit,
+    total: dto.total ?? 0,
+    total_pages: dto.total_pages ?? 0,
+  };
 }
 
 function toUser(dto: CartCreationUserDTO): CartCreationUser {

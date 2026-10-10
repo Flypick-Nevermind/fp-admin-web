@@ -20,11 +20,23 @@ export interface UnassignedCartCreationDTO {
   user: CartCreationUserDTO;
 }
 
+export interface CartCreationsMetaDTO {
+  limit?: number;
+  page?: number;
+  total?: number;
+  total_pages?: number;
+}
+
+export interface CartCreationsDataDTO {
+  items: UnassignedCartCreationDTO[];
+  meta: CartCreationsMetaDTO;
+}
+
 export interface CartCreationsResponseDTO {
   code: number;
   success: boolean;
   message: string;
-  data: UnassignedCartCreationDTO[];
+  data: CartCreationsDataDTO;
   timestamp: string;
   request_id: string;
 }

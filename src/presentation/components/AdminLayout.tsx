@@ -17,6 +17,8 @@ export function AdminLayout() {
   const links = [
     { to: '/admin', label: 'Dashboard', icon: '▣' },
     { to: '/admin/users', label: 'Users', icon: '☺' },
+    { to: '/admin/unassigned-carts', label: 'Unassigned Carts', icon: '🛒' },
+    { to: '/admin/inactive-users', label: 'Inactive Users', icon: '👥' },
     { to: '/admin/orders', label: 'Orders', icon: '▤' },
     { to: '/admin/settings', label: 'Settings', icon: '⚙' },
   ];

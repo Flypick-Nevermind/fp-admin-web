@@ -2,6 +2,8 @@ import { AdminLayout } from '@/presentation/components/AdminLayout';
 import { DashboardPage } from '@/presentation/pages/Dashboard';
 import { PlaceholderPage } from '@/presentation/pages/Placeholder';
 import { LoginPage } from '@/presentation/pages/Login';
+import { UnassignedCartsPage } from '@/presentation/pages/UnassignedCarts';
+import { InactiveUsersPage } from '@/presentation/pages/InactiveUsers';
 import { RequireAuth } from './RequireAuth';
 import {
   createBrowserRouter,
@@ -38,6 +40,8 @@ export const appRouter = createBrowserRouter([
     children: [
       { index: true, element: <DashboardPage /> },
       { path: 'users', element: <PlaceholderPage title="Users" /> },
+      { path: 'unassigned-carts', element: <UnassignedCartsPage /> },
+      { path: 'inactive-users', element: <InactiveUsersPage /> },
       { path: 'orders', element: <PlaceholderPage title="Orders" /> },
       { path: 'settings', element: <PlaceholderPage title="Settings" /> },
     ],

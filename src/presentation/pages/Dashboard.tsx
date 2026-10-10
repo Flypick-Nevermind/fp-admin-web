@@ -1,4 +1,5 @@
 import { StatCard } from '@/shared/components/StatCard';
+import { StatCardSkeleton } from '@/shared/components/StatCardSkeleton';
 import { useDashboardStats } from '@/presentation/hooks/useDashboard';
 
 /**
@@ -20,10 +21,7 @@ export function DashboardPage() {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {loading
           ? Array.from({ length: 4 }).map((_, i) => (
-              <div
-                key={i}
-                className="duo-card p-5 h-32 animate-pulse bg-duo-surface"
-              />
+              <StatCardSkeleton key={i} />
             ))
           : stats.map((s) => <StatCard key={s.id} stat={s} />)}
       </div>

@@ -1,0 +1,96 @@
+@import "tailwindcss";
+@import url("https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap");
+
+@theme {
+  /* Duolingo-inspired palette */
+  --color-duo-bg: #fff;
+  --color-duo-surface: #f6f7fb;
+  --color-duo-border: #e5e5ea;
+  --color-duo-text: #3c3c3c;
+  --color-duo-muted: #777777;
+  --color-duo-green: #58cc02;
+  --color-duo-green-dark: #4cb302;
+  --color-duo-blue: #1cb0f6;
+  --color-duo-blue-dark: #1899d6;
+  --color-duo-orange: #ff9600;
+  --color-duo-red: #ff4b4b;
+  --color-duo-purple: #ce82ff;
+  --color-duo-yellow: #ffc800;
+
+  --font-sans: "Nunito", ui-sans-serif, system-ui, sans-serif;
+  --radius-duo: 1rem;
+}
+
+@layer base {
+  body {
+    font-family: var(--font-sans);
+    background-color: var(--color-duo-surface);
+    color: var(--color-duo-text);
+    -webkit-font-smoothing: antialiased;
+    margin: 0;
+  }
+}
+
+/* ---- Duolingo-style reusable utilities ---- */
+
+/* Card with 3D pressed bottom edge */
+@utility duo-card {
+  background: var(--color-duo-bg);
+  border: 2px solid var(--color-duo-border);
+  border-radius: var(--radius-duo);
+  box-shadow: 0 2px 0 var(--color-duo-border);
+}
+
+@utility duo-btn-primary {
+  font-weight: 800;
+  color: #fff;
+  background: var(--color-duo-green);
+  border: 0;
+  border-radius: var(--radius-duo);
+  box-shadow: 0 4px 0 var(--color-duo-green-dark);
+  transition: transform 0.05s ease, filter 0.15s ease;
+  cursor: pointer;
+
+  &:hover {
+    filter: brightness(1.05);
+  }
+  &:active {
+    transform: translateY(2px);
+    box-shadow: 0 2px 0 var(--color-duo-green-dark);
+  }
+}
+
+@utility duo-btn-secondary {
+  font-weight: 800;
+  color: var(--color-duo-blue);
+  background: #ddf4ff;
+  border: 0;
+  border-radius: var(--radius-duo);
+  box-shadow: 0 4px 0 #c8e9fd;
+  transition: transform 0.05s ease, filter 0.15s ease;
+  cursor: pointer;
+
+  &:hover {
+    filter: brightness(1.05);
+  }
+  &:active {
+    transform: translateY(2px);
+    box-shadow: 0 2px 0 #c8e9fd;
+  }
+}
+
+@utility duo-btn-danger {
+  font-weight: 800;
+  color: #fff;
+  background: var(--color-duo-red);
+  border: 0;
+  border-radius: var(--radius-duo);
+  box-shadow: 0 4px 0 #e03e3e;
+  transition: transform 0.05s ease, filter 0.15s ease;
+  cursor: pointer;
+
+  &:active {
+    transform: translateY(2px);
+    box-shadow: 0 2px 0 #e03e3e;
+  }
+}

@@ -3,7 +3,31 @@
 Format mengikuti [Keep a Changelog](https://keepachangelog.com) dan
 [Semantic Versioning](https://semver.org).
 
-## [Unreleased] — 0.3.0 (desain profesional + pagination + layout fix)
+## [Unreleased] — 0.4.0 (assigned carts + metrik live + kontrak login)
+
+### Added
+- **Tab Assigned Carts** (`/admin/assigned-carts`):
+  - `core/entities/assignedCartCreation.ts`, `data/models`, `data/datasources` (fetch `/cart-creations/assigned?user_admin_id=X&page=&limit=`), port + use case + `data/repositories`.
+  - `presentation/hooks/useAssignedCartCreations.ts` (state pagination; `user_admin_id` dibaca dari `adminId` di auth session, bukan hardcode).
+  - `shared/components/AssignedCartCardSkeleton.tsx` + `presentation/pages/AssignedCarts.tsx` (card grid + pagination).
+  - Router + sidebar (ikon cart-check).
+- **Metrik live di Dashboard**:
+  - `GET /users/active/count` → `ActiveUsersCard` (badge live, hijau).
+  - `GET /users/inactive/count` → `InactiveUsersCard` (badge live, oranye).
+  - Tiap endpoint dibangun full clean-arch (entity → model → datasource → port → usecase → repo → hook → card).
+  - Dashboard baris atas kini 4 kolom: Active + Inactive (live) + 2 stat.
+- **Auth persistence**: session JWT disimpan ke `localStorage` via middleware `persist` Zustand (key `fp-admin-auth`), jadi refresh nggak ngembaliin ke login.
+  - Tambah helper `getAccessToken()` di `useAuthStore`.
+
+### Changed
+- **Kontrak login**: response backend berubah `user_id` → `user_admin_id`. Di-adjust di `data/models/auth.ts` (wire), `core/entities/auth.ts` (`AuthSession.adminId`), dan `data/repositories/auth.ts` (mapping).
+- `Assigned Carts` hanya menampilkan cart yang di-assign ke admin yang login (sesuai filter `user_admin_id` backend).
+
+### Verified
+- `npm run build` hijau.
+- Browser end-to-end: login → tab Assigned Carts render data + pagination; Dashboard nunjukin Active (2) & Inactive (11) dari backend.
+
+## [0.3.0] — desain profesional + pagination + layout fix
 
 ### Changed
 - **Desain dari Duolingo → profesional dark SaaS** (gaya Linear/Vercel):

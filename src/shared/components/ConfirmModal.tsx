@@ -6,7 +6,7 @@ interface ConfirmModalProps {
   description?: ReactNode;
   confirmLabel?: string;
   cancelLabel?: string;
-  /** Visual style of the confirm button. Default: primary (green). */
+  /** Visual style of the confirm button. Default: primary (accent). */
   confirmVariant?: 'primary' | 'danger';
   onConfirm: () => void;
   onCancel: () => void;
@@ -43,7 +43,7 @@ export function ConfirmModal({
   if (!open) return null;
 
   const confirmClass =
-    confirmVariant === 'danger' ? 'duo-btn-danger' : 'duo-btn-primary';
+    confirmVariant === 'danger' ? 'btn-danger' : 'btn-primary';
 
   return (
     <div
@@ -54,21 +54,19 @@ export function ConfirmModal({
     >
       {/* Backdrop */}
       <div
-        className="absolute inset-0 bg-duo-text/40"
+        className="absolute inset-0 bg-black/60 backdrop-blur-sm"
         onClick={onCancel}
         aria-hidden="true"
       />
 
       {/* Card */}
-      <div className="relative z-10 w-full max-w-sm duo-card p-6 flex flex-col">
-        <h2 id="confirm-title" className="text-xl font-black text-duo-text">
+      <div className="relative z-10 w-full max-w-sm card p-6 flex flex-col shadow-2xl">
+        <h2 id="confirm-title" className="text-base font-semibold text-text">
           {title}
         </h2>
 
         {description && (
-          <div className="mt-2 text-sm font-bold text-duo-muted">
-            {description}
-          </div>
+          <div className="mt-2 text-sm text-muted">{description}</div>
         )}
 
         {children}
@@ -77,14 +75,14 @@ export function ConfirmModal({
           <button
             type="button"
             onClick={onCancel}
-            className="duo-btn-secondary flex-1 px-5 py-2.5 text-sm"
+            className="btn-secondary flex-1"
           >
             {cancelLabel}
           </button>
           <button
             type="button"
             onClick={onConfirm}
-            className={`${confirmClass} flex-1 px-5 py-2.5 text-sm`}
+            className={`${confirmClass} flex-1`}
           >
             {confirmLabel}
           </button>

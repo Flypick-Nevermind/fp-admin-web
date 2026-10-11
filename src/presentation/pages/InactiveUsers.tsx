@@ -6,7 +6,7 @@ import { Pagination } from '@/shared/components/Pagination';
 
 /**
  * Full-page view — inactive / prospect users (admin list, paginated).
- * Duolingo-style rows + a Duolingo-style pagination footer.
+ * Professional table-style rows + pagination footer.
  */
 export function InactiveUsersPage() {
   const {
@@ -25,23 +25,21 @@ export function InactiveUsersPage() {
     <div className="flex flex-col gap-6">
       <header className="flex items-end justify-between">
         <div>
-          <h1 className="text-2xl font-extrabold text-duo-text">
-            Inactive Users
-          </h1>
-          <p className="text-sm font-bold text-duo-muted">
+          <h1 className="text-xl font-semibold text-text">Inactive Users</h1>
+          <p className="text-sm text-muted mt-1">
             Prospect users who are currently inactive
           </p>
         </div>
-        <button
-          onClick={reload}
-          className="duo-btn-secondary px-5 py-2 text-sm"
-        >
-          ↻ Refresh
+        <button onClick={reload} className="btn-secondary">
+          <svg viewBox="0 0 16 16" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="1.6">
+            <path d="M13.5 8a5.5 5.5 0 1 1-1.6-3.9M13.5 2.5v3h-3" />
+          </svg>
+          Refresh
         </button>
       </header>
 
       {loading && (
-        <div className="flex flex-col gap-4">
+        <div className="flex flex-col gap-3">
           {Array.from({ length: 4 }).map((_, i) => (
             <InactiveUserRowSkeleton key={i} />
           ))}
@@ -49,78 +47,77 @@ export function InactiveUsersPage() {
       )}
 
       {!loading && error && (
-        <div className="duo-card p-6 text-center">
-          <p className="text-sm font-extrabold text-duo-red">{error}</p>
-          <button
-            onClick={reload}
-            className="duo-btn-primary px-6 py-2.5 text-sm mt-4"
-          >
+        <div className="card p-8 text-center">
+          <p className="text-sm font-medium text-danger">{error}</p>
+          <button onClick={reload} className="btn-primary mt-4">
             Try again
           </button>
         </div>
       )}
 
       {!loading && !error && items.length === 0 && (
-        <div className="duo-card p-10 text-center">
-          <p className="text-4xl">👥</p>
-          <p className="text-lg font-extrabold text-duo-text mt-3">
-            No inactive users
-          </p>
-          <p className="text-sm font-bold text-duo-muted">
-            Everyone in this view is active.
-          </p>
+        <div className="card p-10 text-center">
+          <p className="text-sm font-medium text-text">No inactive users</p>
+          <p className="text-sm text-muted mt-1">Everyone in this view is active.</p>
         </div>
       )}
 
       {!loading && !error && items.length > 0 && (
-        <div className="flex flex-col gap-4">
-          {items.map((u) => (
-            <article key={u.userId} className="duo-card p-5 flex items-center gap-4">
-              {/* avatar-like initials */}
-              <div className="shrink-0 h-12 w-12 rounded-full bg-duo-green/20 text-duo-green-dark flex items-center justify-center text-lg font-black">
-                {initials(u.userName)}
-              </div>
+        <div className="card overflow-hidden">
+          {/* Table header */}
+          <div className="grid grid-cols-[2fr_1fr_1.5fr] gap-4 px-5 py-3 border-b border-border bg-app-surface/50">
+            <span className="text-xs font-medium text-subtle">User</span>
+            <span className="text-xs font-medium text-subtle">Status</span>
+            <span className="text-xs font-medium text-subtle text-right">Last updated</span>
+          </div>
 
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2">
-                  <p className="text-base font-extrabold text-duo-text truncate">
-                    {u.userName}
-                  </p>
-                  {(() => {
-                    const s = userActiveState(u.isActive);
-                    return (
-                      <span
-                        className={`text-xs font-extrabold px-2.5 py-0.5 rounded-full ${s.cls}`}
-                      >
-                        {s.label}
-                      </span>
-                    );
-                  })()}
-                </div>
-                <p className="text-xs font-bold text-duo-muted truncate">
-                  {u.userEmail}
-                </p>
-                <p className="text-xs font-bold text-duo-muted">
-                  {u.userPhone || '—'}
-                </p>
-              </div>
+          <div className="flex flex-col divide-y divide-border">
+            {items.map((u) => {
+              const s = userActiveState(u.isActive);
+              return (
+                <article
+                  key={u.userId}
+                  className="grid grid-cols-[2fr_1fr_1.5fr] items-center gap-4 px-5 py-4 hover:bg-app-surface/40 transition-colors"
+                >
+                  {/* user */}
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="shrink-0 h-9 w-9 rounded-full bg-accent-soft text-accent flex items-center justify-center text-xs font-semibold">
+                      {initials(u.userName)}
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium text-text truncate">
+                        {u.userName}
+                      </p>
+                      <p className="text-xs text-muted truncate">{u.userEmail}</p>
+                    </div>
+                  </div>
 
-              <div className="shrink-0 text-right text-xs font-bold text-duo-muted">
-                <p>Joined {formatTimestamp(u.createdAt)}</p>
-                <p>Updated {formatTimestamp(u.updatedAt)}</p>
-              </div>
-            </article>
-          ))}
+                  {/* status */}
+                  <div>
+                    <span className={`badge ${s.cls}`}>{s.label}</span>
+                  </div>
+
+                  {/* updated */}
+                  <div className="text-right text-xs text-subtle">
+                    <p>{formatTimestamp(u.updatedAt)}</p>
+                    <p className="mt-0.5">{u.userPhone || '—'}</p>
+                  </div>
+                </article>
+              );
+            })}
+          </div>
 
           {meta && (
-            <Pagination
-              meta={meta}
-              page={page}
-              limit={limit}
-              disabled={loading}
-              onPageChange={goToPage}
-              onLimitChange={setPageSize}
-            />
+            <div className="px-5 py-4 border-t border-border">
+              <Pagination
+                meta={meta}
+                page={page}
+                limit={limit}
+                disabled={loading}
+                onPageChange={goToPage}
+                onLimitChange={setPageSize}
+              />
+            </div>
           )}
         </div>
       )}

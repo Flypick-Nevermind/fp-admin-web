@@ -10,7 +10,7 @@ export interface AuthLoginRequestDTO {
 
 export interface AuthUserDTO {
   access_token: string;
-  user_id: string;
+  user_admin_id: string;
   user_name: string;
 }
 

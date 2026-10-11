@@ -4,7 +4,7 @@ import { useLogin } from '../hooks/useLogin';
 
 /**
  * Full-page view — admin login.
- * Duolingo-style: centered card, thick rounded inputs, green CTA, friendly owl.
+ * Professional dark auth screen: centered card, clean inputs, accent CTA.
  */
 export function LoginPage() {
   const [email, setEmail] = useState('');
@@ -19,22 +19,30 @@ export function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen bg-duo-surface flex items-center justify-center px-4">
+    <div className="min-h-screen bg-app-bg flex items-center justify-center px-4">
       <div className="w-full max-w-sm">
-        <div className="duo-card p-8 flex flex-col items-center gap-5">
-          <span className="text-5xl">🦉</span>
-          <div className="text-center">
-            <h1 className="text-2xl font-black text-duo-text">Log in to continue</h1>
-            <p className="text-sm font-bold text-duo-muted mt-1">
-              fp-admin · admin dashboard
-            </p>
+        <div className="card card-hover p-8 flex flex-col gap-6">
+          {/* Brand */}
+          <div className="flex flex-col items-center gap-3 text-center">
+            <div className="h-11 w-11 rounded-lg bg-accent-soft flex items-center justify-center">
+              <svg viewBox="0 0 24 24" className="h-5 w-5 text-accent" fill="none" stroke="currentColor" strokeWidth="2">
+                <rect x="3" y="3" width="7" height="7" rx="1.5" />
+                <rect x="14" y="3" width="7" height="7" rx="1.5" />
+                <rect x="3" y="14" width="7" height="7" rx="1.5" />
+                <rect x="14" y="14" width="7" height="7" rx="1.5" />
+              </svg>
+            </div>
+            <div>
+              <h1 className="text-lg font-semibold text-text">Sign in to fp-admin</h1>
+              <p className="text-sm text-muted mt-1">
+                Enter your credentials to access the dashboard.
+              </p>
+            </div>
           </div>
 
           <form onSubmit={onSubmit} className="flex flex-col gap-4 w-full">
             <label className="flex flex-col gap-1.5">
-              <span className="text-xs font-extrabold uppercase tracking-wide text-duo-muted">
-                Email
-              </span>
+              <span className="text-xs font-medium text-muted">Email</span>
               <input
                 type="email"
                 required
@@ -42,20 +50,12 @@ export function LoginPage() {
                 placeholder="you@corp.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="
-                  w-full px-4 py-3 rounded-xl bg-duo-surface
-                  border-2 border-duo-border text-duo-text font-bold
-                  placeholder:font-semibold placeholder:text-duo-muted/60
-                  focus:outline-none focus:border-duo-blue focus:bg-duo-bg
-                  transition-colors
-                "
+                className="input"
               />
             </label>
 
             <label className="flex flex-col gap-1.5">
-              <span className="text-xs font-extrabold uppercase tracking-wide text-duo-muted">
-                Password
-              </span>
+              <span className="text-xs font-medium text-muted">Password</span>
               <input
                 type="password"
                 required
@@ -63,31 +63,27 @@ export function LoginPage() {
                 placeholder="••••••••"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="
-                  w-full px-4 py-3 rounded-xl bg-duo-surface
-                  border-2 border-duo-border text-duo-text font-bold
-                  placeholder:font-semibold placeholder:text-duo-muted/60
-                  focus:outline-none focus:border-duo-blue focus:bg-duo-bg
-                  transition-colors
-                "
+                className="input"
               />
             </label>
 
             {error && (
-              <p className="text-sm font-bold text-duo-red text-center">{error}</p>
+              <div className="text-xs font-medium text-danger bg-danger-soft border border-danger/20 rounded-md px-3 py-2">
+                {error}
+              </div>
             )}
 
             <button
               type="submit"
               disabled={loading}
-              className="duo-btn-primary px-8 py-3 text-base w-full disabled:opacity-60 disabled:cursor-not-allowed"
+              className="btn-primary w-full"
             >
-              {loading ? 'Logging in…' : 'Log in'}
+              {loading ? 'Signing in…' : 'Sign in'}
             </button>
           </form>
         </div>
 
-        <p className="text-center text-xs font-bold text-duo-muted mt-4">
+        <p className="text-center text-xs text-subtle mt-5">
           Need access? Contact your workspace owner.
         </p>
       </div>

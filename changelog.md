@@ -3,7 +3,35 @@
 Format mengikuti [Keep a Changelog](https://keepachangelog.com) dan
 [Semantic Versioning](https://semver.org).
 
-## [Unreleased] — 0.2.0 (auth + env)
+## [Unreleased] — 0.3.0 (desain profesional + pagination + layout fix)
+
+### Changed
+- **Desain dari Duolingo → profesional dark SaaS** (gaya Linear/Vercel):
+  - Token baru di `@theme`: palet dark muted (`app-bg`, `card`, `accent` #635bff, status success/warning/danger/info), radius kecil.
+  - Font **Inter** (ganti Nunito), weight rapi (400–800).
+  - Kartu: border halus + `card-hover`, buang efek 3D "pressed".
+  - Ikon line SVG (ganti emoji/mascot owl) di nav + tombol.
+  - Badge status soft-bg + teks berwarna.
+  - Scrollbar tipis gelap + skeleton shimmer subtle.
+- Utility baru: `card`/`card-hover`/`btn-primary`/`btn-secondary`/`btn-ghost`/`btn-danger`/`badge`/`input`/`skeleton`/`scroll-thin`/`divide`.
+- Update semua komponen: `AdminLayout`, `Login`, `Dashboard`, `UnassignedCarts`, `InactiveUsers`, `Placeholder`, `StatCard`, `ConfirmModal`, `Pagination`, skeleton.
+- `statusColor` + `userActiveState` sekarang map ke token profesional (info/success/warning/danger).
+
+### Added
+- **Pagination** di tab Unassigned Carts + Inactive Users (prev/next + page-size 10/20/50).
+- `core/entities/page.ts` (`PageMeta`, `PageResult`), `shared/components/Pagination.tsx`.
+- Backend kini berformat `data.items` + `data.meta` → semua layer cart & user diupdate.
+
+### Fixed
+- Layout: sidebar kini pin (logout/collapse nggak ke-seret oleh list panjang) — `h-screen overflow-hidden` + scroll internal.
+- Hook `useUnassignedCartCreations` & `useInactiveUsers`: instance repo dibuat di dalam `useEffect` (bukan per-render) biar nggak ada re-render loop.
+- `is_active` tri-state (null = "Belum Diaktifkan", false = "Inactive", true = "Aktif").
+
+### Verified
+- `npm run build` hijau.
+- Browser: pagination (P1→P2→P1) + token warna resolve bener, layout pin.
+
+## [0.2.0] — auth + env
 
 ### Added
 - **Env config (dev/prod):**

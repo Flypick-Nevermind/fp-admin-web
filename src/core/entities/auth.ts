@@ -9,6 +9,6 @@ export interface LoginCredentials {
 
 export interface AuthSession {
   accessToken: string;
-  userId: string;
+  adminId: string;
   userName: string;
 }

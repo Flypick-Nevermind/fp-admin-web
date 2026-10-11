@@ -21,7 +21,7 @@ export class AuthRepositoryImpl implements AuthRepository {
 
     return {
       accessToken: response.data.access_token,
-      userId: response.data.user_id,
+      adminId: response.data.user_admin_id,
       userName: response.data.user_name,
     };
   }

@@ -16,11 +16,11 @@ export interface ActiveStateMeta {
 
 export function userActiveState(isActive: UserActiveState): ActiveStateMeta {
   if (isActive === true) {
-    return { label: 'Aktif', cls: 'bg-duo-green/20 text-duo-green-dark' };
+    return { label: 'Aktif', cls: 'bg-success-soft text-success' };
   }
   if (isActive === false) {
-    return { label: 'Inactive', cls: 'bg-duo-red/15 text-duo-red' };
+    return { label: 'Inactive', cls: 'bg-danger-soft text-danger' };
   }
   // null (explicit null or absent) → belum diaktifkan
-  return { label: 'Belum Diaktifkan', cls: 'bg-duo-yellow/40 text-[#7a5b00]' };
+  return { label: 'Belum Diaktifkan', cls: 'bg-warning-soft text-warning' };
 }

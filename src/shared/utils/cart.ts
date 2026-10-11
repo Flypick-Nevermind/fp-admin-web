@@ -11,16 +11,16 @@ export function formatTimestamp(iso: string): string {
   });
 }
 
-/** Map a cart-creation status id to a Duolingo-style color token. */
+/** Map a cart-creation status id to a professional badge token. */
 export function statusColor(id: string): string {
   switch (id) {
     case 'ON_PROGRESS':
-      return 'bg-duo-blue text-white';
+      return 'bg-info-soft text-info';
     case 'COMPLETED':
-      return 'bg-duo-green/20 text-duo-green-dark';
+      return 'bg-success-soft text-success';
     case 'CANCELLED':
-      return 'bg-duo-red/15 text-duo-red';
+      return 'bg-danger-soft text-danger';
     default:
-      return 'bg-duo-surface text-duo-muted';
+      return 'bg-card text-muted';
   }
 }

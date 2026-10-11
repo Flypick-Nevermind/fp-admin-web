@@ -1,5 +1,6 @@
+import { useNavigate } from 'react-router-dom';
 import { useAssignedCartCreations } from '../hooks/useAssignedCartCreations';
-import { formatTimestamp, statusColor } from '@/shared/utils/cart';
+import { formatTimestamp, statusColor, statusLabel } from '@/shared/utils/cart';
 import { AssignedCartCardSkeleton } from '@/shared/components/AssignedCartCardSkeleton';
 import { Pagination } from '@/shared/components/Pagination';
 
@@ -20,6 +21,7 @@ export function AssignedCartsPage() {
     setPageSize,
     reload,
   } = useAssignedCartCreations();
+  const navigate = useNavigate();
 
   return (
     <div className="flex flex-col gap-6">
@@ -74,7 +76,7 @@ export function AssignedCartsPage() {
                     {c.user.userId.slice(0, 8)}
                   </span>
                   <span className={`badge ${statusColor(c.statusId)}`}>
-                    {c.statusId}
+                    {statusLabel(c.statusId)}
                   </span>
                 </div>
 
@@ -92,6 +94,13 @@ export function AssignedCartsPage() {
                   <span>Created {formatTimestamp(c.createdAt)}</span>
                   <span>Updated {formatTimestamp(c.updatedAt)}</span>
                 </div>
+
+                <button
+                  onClick={() => navigate(`/admin/carts/${c.cartCreationId}`)}
+                  className="btn-secondary w-full"
+                >
+                  View detail
+                </button>
               </article>
             ))}
           </div>

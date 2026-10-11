@@ -1,6 +1,8 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useUnassignedCartCreations } from '../hooks/useUnassignedCartCreations';
-import { formatTimestamp, statusColor } from '@/shared/utils/cart';
+import { useAssignCartCreation } from '../hooks/useAssignCartCreation';
+import { formatTimestamp, statusColor, statusLabel } from '@/shared/utils/cart';
 import { ConfirmModal } from '@/shared/components/ConfirmModal';
 import { UnassignedCartCardSkeleton } from '@/shared/components/UnassignedCartCardSkeleton';
 import { Pagination } from '@/shared/components/Pagination';
@@ -10,8 +12,9 @@ import type { UnassignedCartCreation } from '@/core/entities/cartCreation';
  * Full-page view — unassigned cart creations (admin queue, paginated).
  * Professional list + pagination footer.
  *
- * "Assign" is gated behind a confirmation modal so an accidental click
- * can't change the queue.
+ * "Assign" is gated behind a confirmation modal (ya / tidak). On "ya" it
+ * POSTs to /cart-creations/assign (admin = logged-in admin), then redirects
+ * to the cart detail page on success.
  */
 export function UnassignedCartsPage() {
   const {
@@ -25,14 +28,26 @@ export function UnassignedCartsPage() {
     setPageSize,
     reload,
   } = useUnassignedCartCreations();
+  const { assign, submitting, error: assignError, clearError } =
+    useAssignCartCreation();
   const [pending, setPending] = useState<UnassignedCartCreation | null>(null);
+  const navigate = useNavigate();
 
-  function onConfirmAssign() {
+  async function onConfirmAssign() {
     if (!pending) return;
-    // TODO: wire to the real assign endpoint (POST /cart-creations/:id/assign).
-    console.log('[assign] confirm', pending.cartCreationId);
+    const cid = pending.cartCreationId;
+    const result = await assign(cid);
+    if (result) {
+      // Success: leave the list and jump into the (now assigned) cart detail.
+      navigate(`/admin/carts/${result.cartCreationId}`);
+      return;
+    }
+    // Failed: keep the user on the list, show the error inside the modal.
+  }
+
+  function onCancelAssign() {
+    clearError();
     setPending(null);
-    reload();
   }
 
   return (
@@ -87,7 +102,7 @@ export function UnassignedCartsPage() {
                   {c.user.userId.slice(0, 8)}
                 </span>
                 <span className={`badge ${statusColor(c.statusId)}`}>
-                  {c.statusId}
+                  {statusLabel(c.statusId)}
                 </span>
               </div>
 
@@ -133,10 +148,13 @@ export function UnassignedCartsPage() {
       <ConfirmModal
         open={pending !== null}
         title="Assign this cart?"
-        confirmLabel="Assign"
-        cancelLabel="Cancel"
+        description="The cart will be assigned to your admin account."
+        confirmLabel="Ya"
+        cancelLabel="Tidak"
+        busy={submitting}
+        error={assignError}
         onConfirm={onConfirmAssign}
-        onCancel={() => setPending(null)}
+        onCancel={onCancelAssign}
       >
         {pending && (
           <div className="mt-4 p-3 rounded-md bg-app-surface border border-border">
@@ -146,7 +164,7 @@ export function UnassignedCartsPage() {
             <p className="text-xs text-muted">{pending.user.userEmail}</p>
             <p className="text-xs text-muted mt-1.5">
               Cart {pending.cartCreationId.slice(0, 8)} ·{' '}
-              <span className="text-info">{pending.statusId}</span>
+              <span className="text-info">{statusLabel(pending.statusId)}</span>
             </p>
           </div>
         )}

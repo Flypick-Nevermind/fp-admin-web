@@ -1,11 +1,13 @@
 import { useParams, Link } from 'react-router-dom';
 import { useCartCreationDetail } from '../hooks/useCartCreationDetail';
+import { useImageUpload } from '../hooks/useImageUpload';
 import {
   formatTimestamp,
   statusColor,
   statusLabel,
   shopLabel,
 } from '@/shared/utils/cart';
+import { resolveImageSrc } from '@/shared/utils/image';
 import { CartStatusEditor } from '@/shared/components/CartStatusEditor';
 import {
   CartItemEditor,
@@ -20,12 +22,14 @@ import {
  *  - CartStatusEditor  → change status + notes
  *  - CartItemEditor    → edit each item (URL, fields, reject, upload images)
  *
- * Save / upload actions are placeholders (no backend endpoints yet) —
- * the UI is fully functional and ready to wire up.
+ * Image uploads go through the backend `/images/upload` endpoint and are
+ * stored as S3 object keys, then rendered via the `/images/media` proxy
+ * (Wasabi blocks direct public object access).
  */
 export function CartCreationDetailPage() {
   const { id } = useParams<{ id: string }>();
   const { detail, loading, error } = useCartCreationDetail(id ?? null);
+  const { upload: uploadImage } = useImageUpload();
 
   const editable = detail?.statusId === 'ON_PROGRESS';
 
@@ -44,11 +48,9 @@ export function CartCreationDetailPage() {
     // await reloadDetail();
   }
 
-  /** Placeholder image upload — swap for the real upload API later.
-   *  Until then it echoes a local object URL so the preview works. */
+  /** Real image upload → returns the S3 object key (displayed via the media proxy). */
   async function handleUploadImage(file: File): Promise<string> {
-    // TODO: return useUploadImage().upload(file);
-    return URL.createObjectURL(file);
+    return uploadImage(file);
   }
 
   return (
@@ -186,7 +188,7 @@ export function CartCreationDetailPage() {
                   <div className="flex items-center gap-4">
                     {item.cart.cartImages.length > 0 ? (
                       <img
-                        src={item.cart.cartImages[0]}
+                        src={resolveImageSrc(item.cart.cartImages[0])}
                         alt=""
                         className="h-14 w-14 rounded-md object-cover bg-app-surface border border-border"
                       />

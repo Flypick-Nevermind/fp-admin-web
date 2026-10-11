@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react';
 import type { CartCreationDetailItem } from '@/core/entities/cartCreationDetail';
 import { shopLabel } from '@/shared/utils/cart';
+import { resolveImageSrc } from '@/shared/utils/image';
 
 export interface CartItemUpdate {
   detailId: string;
@@ -8,7 +9,11 @@ export interface CartItemUpdate {
   isReject: boolean;
   cartTitle: string;
   cartPrice: string;
-  /** New image URLs added via upload (resolved from the upload API). */
+  /**
+   * S3 object keys for images added via upload (returned by the
+   * /images/upload endpoint). Rendered through the media proxy, never
+   * as a raw / signed / public URL.
+   */
   addedImages: string[];
 }
 
@@ -20,8 +25,8 @@ interface CartItemEditorProps {
    */
   onSave: (payload: CartItemUpdate) => Promise<void>;
   /**
-   * Upload an image file, returns the persisted URL. Placeholder until the
-   * upload endpoint is provided — for now it just echoes a local preview.
+   * Upload an image file, returns the persisted S3 object key. The image
+   * is displayed via `resolveImageSrc` → `GET /images/media/{key}`.
    */
   onUpload: (file: File) => Promise<string>;
 }
@@ -49,7 +54,6 @@ export function CartItemEditor({
   const fileRef = useRef<HTMLInputElement>(null);
 
   const existingImages = item.cart.cartImages;
-  const allImages = [...existingImages, ...addedImages];
 
   const notesEmpty = notes.trim().length === 0;
   const rejectNeedsNote = isReject && notesEmpty;
@@ -76,6 +80,21 @@ export function CartItemEditor({
     } finally {
       setUploading(false);
       if (fileRef.current) fileRef.current.value = '';
+    }
+  }
+
+  /**
+   * Toggling reject clears the filled-in fields (title / price / uploaded
+   * images) and locks them, so a rejected item can't carry product data.
+   * The notes field stays editable — it becomes the required rejection reason.
+   */
+  function handleRejectChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const next = e.target.checked;
+    setReject(next);
+    if (next) {
+      setTitle('');
+      setPrice('');
+      setAddedImages([]);
     }
   }
 
@@ -119,43 +138,73 @@ export function CartItemEditor({
         )}
       </div>
 
-      {/* Images */}
+      {/* Images: existing (from the cart) + uploaded (state-only, removable) */}
       <div className="flex flex-wrap gap-2">
-        {allImages.map((src, i) => (
+        {existingImages.map((src, i) => (
           <img
-            key={i}
-            src={src}
+            key={`existing-${i}`}
+            src={resolveImageSrc(src)}
             alt=""
             className="h-14 w-14 rounded-md object-cover bg-app-surface border border-border"
           />
         ))}
-        <label
-          className={`h-14 w-14 rounded-md border border-dashed ${
-            uploading ? 'border-accent text-accent' : 'border-border text-subtle'
-          } flex flex-col items-center justify-center gap-0.5 cursor-pointer hover:border-accent hover:text-accent transition-colors`}
-        >
-          {uploading ? (
-            <>
-              <span className="h-3.5 w-3.5 rounded-full border-2 border-accent/40 border-t-accent animate-spin" />
-              <span className="text-[9px]">Uploading</span>
-            </>
-          ) : (
-            <>
-              <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.7">
-                <path d="M12 5v14M5 12h14" />
-              </svg>
-              <span className="text-[9px]">Upload</span>
-            </>
-          )}
-          <input
-            ref={fileRef}
-            type="file"
-            accept="image/*"
-            className="hidden"
-            onChange={handleUpload}
-            disabled={uploading}
-          />
-        </label>
+        {addedImages.map((objectKey) => (
+          <div key={`added-${objectKey}`} className="relative">
+            <img
+              src={resolveImageSrc(objectKey)}
+              alt=""
+              className="h-14 w-14 rounded-md object-cover bg-app-surface border border-border"
+            />
+            <button
+              type="button"
+              onClick={() =>
+                setAddedImages((prev) =>
+                  prev.filter((k) => k !== objectKey),
+                )
+              }
+              disabled={isReject}
+              className="absolute -top-1.5 -right-1.5 h-5 w-5 rounded-full bg-danger text-white text-xs leading-none flex items-center justify-center shadow-sm hover:brightness-110 disabled:opacity-40 disabled:cursor-not-allowed"
+              aria-label="Remove uploaded image"
+              title="Remove"
+            >
+              ×
+            </button>
+          </div>
+        ))}
+        {!isReject && (
+          <label
+            className={`h-14 w-14 rounded-md border border-dashed ${
+              uploading ? 'border-accent text-accent' : 'border-border text-subtle'
+            } flex flex-col items-center justify-center gap-0.5 cursor-pointer hover:border-accent hover:text-accent transition-colors`}
+          >
+            {uploading ? (
+              <>
+                <span className="h-3.5 w-3.5 rounded-full border-2 border-accent/40 border-t-accent animate-spin" />
+                <span className="text-[9px]">Uploading</span>
+              </>
+            ) : (
+              <>
+                <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.7">
+                  <path d="M12 5v14M5 12h14" />
+                </svg>
+                <span className="text-[9px]">Upload</span>
+              </>
+            )}
+            <input
+              ref={fileRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={handleUpload}
+              disabled={uploading}
+            />
+          </label>
+        )}
+        {isReject && (
+          <span className="text-xs font-medium text-subtle self-center">
+            Upload locked
+          </span>
+        )}
       </div>
 
       {/* Product URL (read-only text) so the admin can check / copy it */}
@@ -192,8 +241,9 @@ export function CartItemEditor({
           <input
             value={title}
             onChange={(e) => setTitle(e.target.value)}
-            placeholder="Product title"
-            className="input"
+            placeholder={isReject ? 'Locked' : 'Product title'}
+            disabled={isReject}
+            className={`input ${isReject ? '!bg-app-surface !text-subtle !border-border cursor-not-allowed' : ''}`}
           />
         </label>
         <label className="flex flex-col gap-1.5">
@@ -201,8 +251,9 @@ export function CartItemEditor({
           <input
             value={price}
             onChange={(e) => setPrice(e.target.value)}
-            placeholder="0.00"
-            className="input"
+            placeholder={isReject ? 'Locked' : '0.00'}
+            disabled={isReject}
+            className={`input ${isReject ? '!bg-app-surface !text-subtle !border-border cursor-not-allowed' : ''}`}
           />
         </label>
       </div>
@@ -230,16 +281,23 @@ export function CartItemEditor({
       </label>
 
       {/* Reject toggle */}
-      <label className="flex items-center gap-2.5 cursor-pointer select-none">
+      <label
+        className={`flex items-center gap-2.5 cursor-pointer select-none ${isReject ? '' : ''}`}
+      >
         <input
           type="checkbox"
           checked={isReject}
-          onChange={(e) => setReject(e.target.checked)}
+          onChange={handleRejectChange}
           className="h-4 w-4 rounded accent-[#ff5c7a]"
         />
         <span className="text-xs font-medium text-text">
           Reject this item
         </span>
+        {isReject && (
+          <span className="text-xs font-medium text-danger">
+            · fields locked, note required
+          </span>
+        )}
       </label>
 
       {/* Feedback */}

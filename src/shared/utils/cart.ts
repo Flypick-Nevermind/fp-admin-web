@@ -16,9 +16,11 @@ export function statusColor(id: string): string {
   switch (id) {
     case 'ON_PROGRESS':
       return 'bg-info-soft text-info';
-    case 'COMPLETED':
+    case 'ON_CHECK':
+      return 'bg-warning-soft text-warning';
+    case 'DONE':
       return 'bg-success-soft text-success';
-    case 'CANCELLED':
+    case 'CANCELED':
       return 'bg-danger-soft text-danger';
     default:
       return 'bg-card text-muted';
@@ -29,10 +31,9 @@ export function statusColor(id: string): string {
 export function statusLabel(id: string): string {
   const map: Record<string, string> = {
     ON_PROGRESS: 'On progress',
-    PENDING: 'Pending',
-    COMPLETED: 'Completed',
-    CANCELLED: 'Cancelled',
-    UNASSIGNED: 'Unassigned',
+    ON_CHECK: 'On check',
+    DONE: 'Done',
+    CANCELED: 'Canceled',
   };
   return map[id] ?? id;
 }

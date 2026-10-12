@@ -4,10 +4,9 @@
 
 export type CartCreationStatus =
   | 'ON_PROGRESS'
-  | 'PENDING'
-  | 'COMPLETED'
-  | 'CANCELLED'
-  | 'UNASSIGNED';
+  | 'ON_CHECK'
+  | 'DONE'
+  | 'CANCELED';
 
 export interface CartCreationUser {
   userId: string;

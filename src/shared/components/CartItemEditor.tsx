@@ -3,80 +3,66 @@ import type { CartCreationDetailItem } from '@/core/entities/cartCreationDetail'
 import { shopLabel } from '@/shared/utils/cart';
 import { resolveImageSrc } from '@/shared/utils/image';
 
-export interface CartItemUpdate {
-  detailId: string;
+/**
+ * Editable card for a single item line. Fully CONTROLLED: the page owns
+ * the draft (via useItemDrafts) and persists it with the shared "Save
+ * changes" button — this component has no save button of its own.
+ *
+ * Fields: product title / price, reject toggle, detail notes, and image
+ * uploads (the upload returns the S3 object key, shown through the media
+ * proxy; the page merges it into the payload's image set).
+ */
+
+export interface CartItemDraft {
   detailNotes: string;
-  isReject: boolean;
   cartTitle: string;
   cartPrice: string;
-  /**
-   * S3 object keys for images added via upload (returned by the
-   * /images/upload endpoint). Rendered through the media proxy, never
-   * as a raw / signed / public URL.
-   */
+  isReject: boolean;
+  /** S3 object keys added via upload (not yet persisted). */
   addedImages: string[];
 }
 
 interface CartItemEditorProps {
   item: CartCreationDetailItem;
-  /**
-   * Persist the item edit. Returns a promise; shows a spinner while it
-   * resolves. Placeholder until the backend endpoint is provided.
-   */
-  onSave: (payload: CartItemUpdate) => Promise<void>;
-  /**
-   * Upload an image file, returns the persisted S3 object key. The image
-   * is displayed via `resolveImageSrc` → `GET /images/media/{key}`.
-   */
+  /** The draft for this item, owned by the page. */
+  draft: CartItemDraft;
+  /** Patch the draft (the page re-renders this card with the new values). */
+  onChange: (patch: Partial<CartItemDraft>) => void;
+  /** Upload an image file, returns the persisted S3 object key. */
   onUpload: (file: File) => Promise<string>;
+  /**
+   * True while the shared save button is submitting — locks the
+   * per-item fields so mid-save edits can't race the request.
+   */
+  saving?: boolean;
 }
 
-/**
- * Editable card for a single item line: fill / change the item's fields,
- * toggle "reject", and upload additional product images.
- */
 export function CartItemEditor({
   item,
-  onSave,
+  draft,
+  onChange,
   onUpload,
+  saving,
 }: CartItemEditorProps) {
-  const [notes, setNotes] = useState(item.detailNotes);
-  const [title, setTitle] = useState(item.cart.cartTitle);
-  const [price, setPrice] = useState(item.cart.cartPrice);
-  const [isReject, setReject] = useState(item.isReject);
-  const [addedImages, setAddedImages] = useState<string[]>([]);
+  const { detailNotes, cartTitle, cartPrice, isReject, addedImages } = draft;
 
-  const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState(false);
-
+  const [uploadError, setUploadError] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const existingImages = item.cart.cartImages;
-
-  const notesEmpty = notes.trim().length === 0;
-  const rejectNeedsNote = isReject && notesEmpty;
-
-  const dirty =
-    notes !== item.detailNotes ||
-    title !== item.cart.cartTitle ||
-    price !== item.cart.cartPrice ||
-    isReject !== item.isReject ||
-    addedImages.length > 0;
+  const notesEmpty = detailNotes.trim().length === 0;
 
   async function handleUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
     setUploading(true);
-    setError(null);
+    setUploadError(null);
     try {
-      // Placeholder: persist the upload via the (future) API. Until then,
-      // show a local preview so the UI behaves like it's already wired.
-      const url = await onUpload(file);
-      setAddedImages((prev) => [...prev, url]);
+      const objectKey = await onUpload(file);
+      onChange({ addedImages: [...addedImages, objectKey] });
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Upload failed.');
+      setUploadError(err instanceof Error ? err.message : 'Upload failed.');
     } finally {
       setUploading(false);
       if (fileRef.current) fileRef.current.value = '';
@@ -86,41 +72,15 @@ export function CartItemEditor({
   /**
    * Toggling reject clears the filled-in fields (title / price / uploaded
    * images) and locks them, so a rejected item can't carry product data.
-   * The notes field stays editable — it becomes the required rejection reason.
+   * The notes field stays editable — it becomes the required rejection
+   * reason.
    */
   function handleRejectChange(e: React.ChangeEvent<HTMLInputElement>) {
     const next = e.target.checked;
-    setReject(next);
     if (next) {
-      setTitle('');
-      setPrice('');
-      setAddedImages([]);
-    }
-  }
-
-  async function handleSave() {
-    // Rejecting an item requires a note explaining why.
-    if (rejectNeedsNote) {
-      setError('A note is required when rejecting this item.');
-      return;
-    }
-    setSuccess(false);
-    setError(null);
-    setSaving(true);
-    try {
-      await onSave({
-        detailId: item.detailId,
-        detailNotes: notes,
-        isReject,
-        cartTitle: title,
-        cartPrice: price,
-        addedImages,
-      });
-      setSuccess(true);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to save item.');
-    } finally {
-      setSaving(false);
+      onChange({ isReject: true, cartTitle: '', cartPrice: '', addedImages: [] });
+    } else {
+      onChange({ isReject: false });
     }
   }
 
@@ -138,7 +98,7 @@ export function CartItemEditor({
         )}
       </div>
 
-      {/* Images: existing (from the cart) + uploaded (state-only, removable) */}
+      {/* Images: existing (from the cart) + uploaded (draft, removable) */}
       <div className="flex flex-wrap gap-2">
         {existingImages.map((src, i) => (
           <img
@@ -158,11 +118,11 @@ export function CartItemEditor({
             <button
               type="button"
               onClick={() =>
-                setAddedImages((prev) =>
-                  prev.filter((k) => k !== objectKey),
-                )
+                onChange({
+                  addedImages: addedImages.filter((k) => k !== objectKey),
+                })
               }
-              disabled={isReject}
+              disabled={isReject || saving}
               className="absolute -top-1.5 -right-1.5 h-5 w-5 rounded-full bg-danger text-white text-xs leading-none flex items-center justify-center shadow-sm hover:brightness-110 disabled:opacity-40 disabled:cursor-not-allowed"
               aria-label="Remove uploaded image"
               title="Remove"
@@ -196,7 +156,7 @@ export function CartItemEditor({
               accept="image/*"
               className="hidden"
               onChange={handleUpload}
-              disabled={uploading}
+              disabled={uploading || saving}
             />
           </label>
         )}
@@ -206,6 +166,12 @@ export function CartItemEditor({
           </span>
         )}
       </div>
+
+      {uploadError && (
+        <div className="text-xs font-medium text-danger bg-danger-soft border border-danger/20 rounded-md px-3 py-2">
+          {uploadError}
+        </div>
+      )}
 
       {/* Product URL (read-only text) so the admin can check / copy it */}
       <div className="flex flex-col gap-1.5">
@@ -238,20 +204,20 @@ export function CartItemEditor({
         <label className="flex flex-col gap-1.5">
           <span className="text-xs font-medium text-muted">Product</span>
           <input
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
+            value={cartTitle}
+            onChange={(e) => onChange({ cartTitle: e.target.value })}
             placeholder={isReject ? 'Locked' : 'Product title'}
-            disabled={isReject}
+            disabled={isReject || saving}
             className={`input ${isReject ? '!bg-app-surface !text-subtle !border-border cursor-not-allowed' : ''}`}
           />
         </label>
         <label className="flex flex-col gap-1.5">
           <span className="text-xs font-medium text-muted">Price</span>
           <input
-            value={price}
-            onChange={(e) => setPrice(e.target.value)}
+            value={cartPrice}
+            onChange={(e) => onChange({ cartPrice: e.target.value })}
             placeholder={isReject ? 'Locked' : '0.00'}
-            disabled={isReject}
+            disabled={isReject || saving}
             className={`input ${isReject ? '!bg-app-surface !text-subtle !border-border cursor-not-allowed' : ''}`}
           />
         </label>
@@ -260,33 +226,29 @@ export function CartItemEditor({
       <label className="flex flex-col gap-1.5">
         <span className="text-xs font-medium text-muted">
           Detail notes{' '}
-          {isReject && (
-            <span className="text-danger">· required when rejecting</span>
-          )}
+          <span className="text-danger">· required</span>
         </span>
         <textarea
-          value={notes}
-          onChange={(e) => setNotes(e.target.value)}
+          value={detailNotes}
+          onChange={(e) => onChange({ detailNotes: e.target.value })}
           rows={2}
           placeholder={
             isReject
               ? 'Required — explain why this item is being rejected…'
-              : 'Internal note for this item…'
+              : 'Required — internal note for this item…'
           }
-          className={`input resize-y ${
-            rejectNeedsNote ? '!border-danger' : ''
-          }`}
+          disabled={saving}
+          className={`input resize-y ${notesEmpty ? '!border-danger' : ''}`}
         />
       </label>
 
       {/* Reject toggle */}
-      <label
-        className={`flex items-center gap-2.5 cursor-pointer select-none ${isReject ? '' : ''}`}
-      >
+      <label className="flex items-center gap-2.5 cursor-pointer select-none">
         <input
           type="checkbox"
           checked={isReject}
           onChange={handleRejectChange}
+          disabled={saving}
           className="h-4 w-4 rounded accent-[#ff5c7a]"
         />
         <span className="text-xs font-medium text-text">
@@ -298,39 +260,6 @@ export function CartItemEditor({
           </span>
         )}
       </label>
-
-      {/* Feedback */}
-      {success && (
-        <div className="text-xs font-medium text-success bg-success-soft border border-success/20 rounded-md px-3 py-2">
-          Item saved.
-        </div>
-      )}
-      {error && (
-        <div className="text-xs font-medium text-danger bg-danger-soft border border-danger/20 rounded-md px-3 py-2">
-          {error}
-        </div>
-      )}
-
-      <div className="flex items-center gap-3">
-        <button
-          type="button"
-          onClick={handleSave}
-          disabled={saving || rejectNeedsNote || (dirty === false && !success)}
-          className="btn-primary flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          {saving && (
-            <span className="h-3.5 w-3.5 rounded-full border-2 border-white/40 border-t-white animate-spin" />
-          )}
-          {saving ? 'Saving…' : 'Save item'}
-        </button>
-        {rejectNeedsNote ? (
-          <span className="text-xs font-medium text-danger">
-            Fill a note before saving a rejection.
-          </span>
-        ) : dirty ? null : (
-          <span className="text-xs text-subtle">No changes</span>
-        )}
-      </div>
     </div>
   );
 }

@@ -51,8 +51,19 @@ export interface CartCreationDetail {
  */
 export const CART_CREATION_STATUSES = [
   'ON_PROGRESS',
-  'COMPLETED',
-  'CANCELLED',
+  'ON_CHECK',
+  'DONE',
+  'CANCELED',
 ] as const;
 
 export type EditableCartStatus = (typeof CART_CREATION_STATUSES)[number];
+
+/**
+ * Statuses that ONLY the system may set — an admin can never manually move
+ * a cart creation to these (no back-move). The status picker shows them
+ * disabled so the full set is visible but unselectable.
+ * Keep in sync with the backend enum values.
+ */
+export const SYSTEM_ONLY_STATUSES: readonly EditableCartStatus[] = [
+  'ON_PROGRESS',
+];

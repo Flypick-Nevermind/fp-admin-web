@@ -1,6 +1,19 @@
+import { useEffect, useMemo, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useCartCreationDetail } from '../hooks/useCartCreationDetail';
 import { useImageUpload } from '../hooks/useImageUpload';
+import { useUpdateCartCreation } from '../hooks/useUpdateCartCreation';
+import {
+  useItemDrafts,
+  type ItemDraft,
+} from '../hooks/useItemDrafts';
+import type {
+  EditableCartStatus,
+} from '@/core/entities/cartCreationDetail';
+import {
+  type UpdateCartCreationCommand,
+  type UpdateCartCreationDetailCommand,
+} from '@/core/entities/cartCreationUpdate';
 import {
   formatTimestamp,
   statusColor,
@@ -8,17 +21,19 @@ import {
   shopLabel,
 } from '@/shared/utils/cart';
 import { resolveImageSrc } from '@/shared/utils/image';
-import { CartStatusEditor } from '@/shared/components/CartStatusEditor';
 import {
-  CartItemEditor,
-  type CartItemUpdate,
-} from '@/shared/components/CartItemEditor';
+  CartStatusEditor,
+  type StatusDraft,
+} from '@/shared/components/CartStatusEditor';
+import { CartItemEditor } from '@/shared/components/CartItemEditor';
+import { ToastHost } from '@/shared/components/Toast';
+import { useToasts } from '@/shared/components/useToasts';
 
 /**
  * Full-page view — a single cart creation and its item lines.
  * Fetched from `GET /cart-creations/{id}`.
  *
- * When the status is ON_PROGRESS, inline editors are shown:
+ * When the status is ON_CHECK, inline editors are shown:
  *  - CartStatusEditor  → change status + notes
  *  - CartItemEditor    → edit each item (URL, fields, reject, upload images)
  *
@@ -28,25 +43,174 @@ import {
  */
 export function CartCreationDetailPage() {
   const { id } = useParams<{ id: string }>();
-  const { detail, loading, error } = useCartCreationDetail(id ?? null);
+  const { detail, loading, error, reload } = useCartCreationDetail(id ?? null);
   const { upload: uploadImage } = useImageUpload();
+  const { update, submitting } = useUpdateCartCreation();
+  const { toasts, pushToast, dismissToast } = useToasts();
 
-  const editable = detail?.statusId === 'ON_PROGRESS';
+  const editable = detail?.statusId === 'ON_CHECK';
 
-  /** Placeholder save — swap for the real status-update endpoint later. */
-  async function handleSaveStatus(_payload: {
-    statusId: string;
-    statusNotes: string;
-  }) {
-    // TODO: await useUpdateCartCreationStatus().update(detail.cartCreationId, payload);
-    // await reloadDetail();
+  /*
+   * Draft state (owned by the page; editors are fully controlled). Drafts
+   * re-seed from the server data every time the detail is (re-)fetched,
+   * so after a successful save the editors start from the persisted truth.
+   */
+  const [statusDraft, setStatusDraft] = useState<StatusDraft | null>(null);
+  useEffect(() => {
+    if (detail && editable) {
+      setStatusDraft({
+        statusId: detail.statusId as EditableCartStatus,
+        statusNotes: detail.statusNotes,
+      });
+    }
+  }, [detail, editable]);
+
+  const { drafts, update: updateDraft } = useItemDrafts({
+    seedKey: detail?.updatedAt ?? null,
+    seed:
+      detail?.details.map((item): ItemDraft => ({
+        detailNotes: item.detailNotes,
+        cartTitle: item.cart.cartTitle,
+        cartPrice: item.cart.cartPrice,
+        isReject: item.isReject,
+        addedImages: [],
+      })) ?? [],
+  });
+
+  /*
+   * Build the sparse update payload from the drafts:
+   *  - status fields only when the admin actually changed them;
+   *  - one entry per CHANGED item line:
+   *    - rejected lines send notes + flag only (no cart payload);
+   *    - accepted lines send the full cart payload the backend requires
+   *      (title, notes, complete image set, non-zero price).
+   */
+  const { detailCommands, statusChanged, hasChanges, firstIssue } = useMemo(
+    () => {
+      const commands: UpdateCartCreationDetailCommand[] = [];
+      let issue: string | null = null;
+
+      const statusChangedNow =
+        statusDraft !== null &&
+        detail !== null &&
+        (statusDraft.statusId !== (detail.statusId as EditableCartStatus) ||
+          statusDraft.statusNotes !== detail.statusNotes);
+
+      detail?.details.forEach((item, i) => {
+        const d = drafts[i];
+        if (!d) return;
+        const changed =
+          d.detailNotes !== item.detailNotes ||
+          d.cartTitle !== item.cart.cartTitle ||
+          d.cartPrice !== item.cart.cartPrice ||
+          d.isReject !== item.isReject ||
+          d.addedImages.length > 0;
+        if (!changed) return;
+
+        const label = shopLabel(item.cart.cartUrl);
+        const rejectChanged = d.isReject !== item.isReject;
+        const images = [...item.cart.cartImages, ...d.addedImages];
+        const price = toPriceNumber(d.cartPrice);
+
+        if (d.isReject) {
+          // Rejected: notes + flag only. The backend skips the
+          // accepted-item rules and leaves the cart row / images alone.
+          if (issue === null && d.detailNotes.trim() === '') {
+            issue = `A note is required for the rejected item (${label}).`;
+            return;
+          }
+          commands.push({
+            detailId: item.detailId,
+            cartId: item.cartId,
+            detailNotes: d.detailNotes,
+            isReject: rejectChanged ? true : null,
+            cart: null,
+          });
+          return;
+        }
+
+        // Accepted: the backend requires a full, valid cart payload.
+        if (issue === null && d.cartTitle.trim() === '') {
+          issue = `Product title is required for ${label}.`;
+          return;
+        }
+        if (issue === null && d.detailNotes.trim() === '') {
+          issue = `Detail notes are required for ${label}.`;
+          return;
+        }
+        if (issue === null && images.length === 0) {
+          issue = `At least one product image is required for ${label}.`;
+          return;
+        }
+        if (issue === null && price === 0) {
+          issue = `Product price must not be zero for ${label}.`;
+          return;
+        }
+        commands.push({
+          detailId: item.detailId,
+          cartId: item.cartId,
+          detailNotes: d.detailNotes,
+          isReject: rejectChanged ? false : null,
+          cart: {
+            cartTitle: d.cartTitle,
+            cartPrice: price,
+            // Complete set (existing + new): the backend replaces images.
+            images,
+          },
+        });
+      });
+
+      return {
+        detailCommands: commands,
+        statusChanged: statusChangedNow,
+        hasChanges: statusChangedNow || commands.length > 0,
+        firstIssue: issue,
+      };
+    },
+    [detail, drafts, statusDraft],
+  );
+
+  /**
+   * One atomic save — status (when changed) + every changed item line in a
+   * single POST /cart-creations/update. Success → toast drop from the top.
+   */
+  async function handleSaveAll() {
+    if (!detail || !statusDraft || !hasChanges) return;
+
+    if (firstIssue) {
+      pushToast('error', "Can't save yet", firstIssue);
+      return;
+    }
+
+    const command: Omit<UpdateCartCreationCommand, 'userAdminId'> = {
+      cartCreationId: detail.cartCreationId,
+      details: detailCommands,
+    };
+    if (statusChanged) {
+      command.statusId = statusDraft.statusId;
+      command.statusNotes = statusDraft.statusNotes;
+    }
+
+    try {
+      const result = await update(command);
+      pushToast(
+        'success',
+        'Cart creation saved',
+        `${detail.cartCreationId.slice(0, 8)} · ${statusLabel(statusChanged ? result.statusId : detail.statusId)} · ${detailCommands.length} item${detailCommands.length === 1 ? '' : 's'} updated`,
+      );
+    } catch (e) {
+      pushToast(
+        'error',
+        'Save failed',
+        e instanceof Error ? e.message : 'Could not save the cart creation.',
+      );
+      return;
+    }
+    // Refetch → updated_at changes → all drafts re-seed automatically.
+    await reload();
   }
 
-  /** Placeholder item update — swap for the real item-update endpoint later. */
-  async function handleSaveItem(_item: CartItemUpdate) {
-    // TODO: await useUpdateCartLineItem().update(detail.cartCreationId, _item);
-    // await reloadDetail();
-  }
+  const pendingCount = detailCommands.length + (statusChanged ? 1 : 0);
 
   /** Real image upload → returns the S3 object key (displayed via the media proxy). */
   async function handleUploadImage(file: File): Promise<string> {
@@ -55,6 +219,7 @@ export function CartCreationDetailPage() {
 
   return (
     <div className="flex flex-col gap-6">
+      <ToastHost toasts={toasts} onDismiss={dismissToast} />
       <header className="flex items-center justify-between">
         <div className="flex items-center gap-3 min-w-0">
           <Link
@@ -71,11 +236,26 @@ export function CartCreationDetailPage() {
             <p className="text-xs text-subtle font-mono truncate">{id}</p>
           </div>
         </div>
-        {detail && (
-          <span className={`badge shrink-0 ${statusColor(detail.statusId)}`}>
-            {statusLabel(detail.statusId)}
-          </span>
-        )}
+        <div className="flex items-center gap-3 shrink-0">
+          {detail && (
+            <span className={`badge ${statusColor(detail.statusId)}`}>
+              {statusLabel(detail.statusId)}
+            </span>
+          )}
+          {editable && statusDraft && (
+            <button
+              type="button"
+              onClick={handleSaveAll}
+              disabled={!hasChanges || submitting}
+              className="btn-primary flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {submitting && (
+                <span className="h-3.5 w-3.5 rounded-full border-2 border-white/40 border-t-white animate-spin" />
+              )}
+              {submitting ? 'Saving…' : 'Save changes'}
+            </button>
+          )}
+        </div>
       </header>
 
       {loading && (
@@ -127,13 +307,16 @@ export function CartCreationDetailPage() {
             ) : null}
           </div>
 
-          {/* Editable status + notes (only while ON_PROGRESS) */}
-          {detail.statusId === 'ON_PROGRESS' && (
+          {/* Editable status + notes (only while ON_CHECK) */}
+          {detail.statusId === 'ON_CHECK' && statusDraft && (
             <CartStatusEditor
               cartCreationId={detail.cartCreationId}
-              statusId={detail.statusId}
-              statusNotes={detail.statusNotes}
-              onSave={handleSaveStatus}
+              statusId={detail.statusId as EditableCartStatus}
+              draft={statusDraft}
+              onDraftChange={(patch) =>
+                setStatusDraft((p) => (p ? { ...p, ...patch } : p))
+              }
+              saving={submitting}
             />
           )}
 
@@ -143,11 +326,16 @@ export function CartCreationDetailPage() {
               <h2 className="text-sm font-semibold text-text">
                 Items ({detail.details.length})
               </h2>
-              {editable && (
-                <span className="text-xs text-subtle">
-                  Edit mode · changes save per item
-                </span>
-              )}
+              {editable &&
+                (hasChanges ? (
+                  <span className="text-xs font-medium text-warning">
+                    {pendingCount} pending change{pendingCount === 1 ? '' : 's'}
+                  </span>
+                ) : (
+                  <span className="text-xs text-subtle">
+                    Edit mode · save all with the button above
+                  </span>
+                ))}
             </div>
 
             {detail.details.length === 0 && !editable && (
@@ -160,16 +348,22 @@ export function CartCreationDetailPage() {
             )}
 
             {editable ? (
-              /* Editable mode: each item becomes a CartItemEditor */
+              /* Editable mode: each item becomes a controlled CartItemEditor.
+               * All drafts persist together via the "Save changes" button
+               * in the page header. */
               <div className="flex flex-col gap-4">
-                {detail.details.map((item) => (
-                  <CartItemEditor
-                    key={item.detailId}
-                    item={item}
-                    onSave={handleSaveItem}
-                    onUpload={handleUploadImage}
-                  />
-                ))}
+                {detail.details.map((item, i) =>
+                  drafts[i] ? (
+                    <CartItemEditor
+                      key={item.detailId}
+                      item={item}
+                      draft={drafts[i]}
+                      onChange={(patch) => updateDraft(i, patch)}
+                      onUpload={handleUploadImage}
+                      saving={submitting}
+                    />
+                  ) : null,
+                )}
               </div>
             ) : (
               /* Read-only mode: static item cards */
@@ -247,4 +441,13 @@ function initials(name: string): string {
   if (parts.length === 0) return '?';
   if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
   return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+}
+
+/**
+ * Parse the editor's price text input into the numeric value the update API
+ * expects (float, stored as varchar in the DB). Empty / non-numeric → 0.
+ */
+function toPriceNumber(value: string): number {
+  const n = Number.parseFloat(value);
+  return Number.isFinite(n) ? n : 0;
 }

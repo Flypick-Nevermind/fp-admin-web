@@ -1,62 +1,40 @@
-import { useState } from 'react';
 import {
   CART_CREATION_STATUSES,
+  SYSTEM_ONLY_STATUSES,
   type EditableCartStatus,
 } from '@/core/entities/cartCreationDetail';
 import { statusColor, statusLabel } from '@/shared/utils/cart';
 
+export interface StatusDraft {
+  statusId: EditableCartStatus;
+  statusNotes: string;
+}
+
 interface CartStatusEditorProps {
   /** The cart creation id this editor belongs to. */
   cartCreationId: string;
-  /** The current status + notes (used to initialise the draft). */
-  statusId: string;
-  statusNotes: string;
-  /**
-   * Persist the change. Returns a promise; the editor shows a spinner while
-   * it resolves. When it resolves, the editor reports success.
-   */
-  onSave: (payload: {
-    statusId: EditableCartStatus;
-    statusNotes: string;
-  }) => Promise<void>;
+  /** The current (persisted) status — shown as context in the subtitle. */
+  statusId: EditableCartStatus;
+  /** The draft owned by the page; this editor is fully controlled. */
+  draft: StatusDraft;
+  onDraftChange: (patch: Partial<StatusDraft>) => void;
+  /** Lock the fields while the shared save button is submitting. */
+  saving?: boolean;
 }
 
 /**
  * Editable status + notes form, shown while a cart creation is
- * ON_PROGRESS. Lets an admin change the status and write notes.
- *
- * Self-contained draft state; calls `onSave` to persist. The parent is
- * responsible for reloading the data after a successful save.
+ * ON_CHECK. The draft state lives in the page so the single
+ * "Save changes" button (in the page header) persists status AND items
+ * in one atomic call — this editor has no save button of its own.
  */
 export function CartStatusEditor({
   cartCreationId,
   statusId,
-  statusNotes,
-  onSave,
+  draft,
+  onDraftChange,
+  saving,
 }: CartStatusEditorProps) {
-  const [draftStatus, setDraftStatus] =
-    useState<EditableCartStatus>(statusId as EditableCartStatus);
-  const [draftNotes, setDraftNotes] = useState(statusNotes);
-  const [saving, setSaving] = useState(false);
-  const [success, setSuccess] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  const dirty = draftStatus !== statusId || draftNotes !== statusNotes;
-
-  async function handleSave() {
-    setSuccess(false);
-    setError(null);
-    setSaving(true);
-    try {
-      await onSave({ statusId: draftStatus, statusNotes: draftNotes });
-      setSuccess(true);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to save changes.');
-    } finally {
-      setSaving(false);
-    }
-  }
-
   return (
     <div className="card card-hover p-5 flex flex-col gap-4">
       <div>
@@ -69,70 +47,66 @@ export function CartStatusEditor({
         </p>
       </div>
 
-      {/* Status picker */}
+      {/* Status picker — system-only statuses are visible but disabled */}
       <label className="flex flex-col gap-1.5">
         <span className="text-xs font-medium text-muted">Status</span>
         <div className="flex flex-wrap gap-2">
           {CART_CREATION_STATUSES.map((s) => {
-            const active = draftStatus === s;
+            const active = draft.statusId === s;
+            const systemOnly = SYSTEM_ONLY_STATUSES.includes(s);
             return (
               <button
                 key={s}
                 type="button"
-                onClick={() => setDraftStatus(s)}
-                className={`badge !px-3 !py-1.5 cursor-pointer transition-colors ${
+                onClick={() => onDraftChange({ statusId: s })}
+                disabled={saving || systemOnly}
+                title={
+                  systemOnly
+                    ? 'Set by the system only — cannot be selected'
+                    : undefined
+                }
+                className={`badge !px-3 !py-1.5 transition-colors ${
                   active
                     ? statusColor(s) + ' ring-1 ring-current'
-                    : 'bg-card text-muted hover:bg-app-surface'
+                    : systemOnly
+                      ? 'bg-card text-subtle opacity-50 cursor-not-allowed'
+                      : 'bg-card text-muted hover:bg-app-surface cursor-pointer'
                 }`}
               >
-                {statusLabel(s)}
+                <span className="inline-flex items-center gap-1.5">
+                  {systemOnly && (
+                    <svg viewBox="0 0 24 24" className="h-3 w-3" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                      <rect x="5" y="11" width="14" height="9" rx="2" />
+                      <path d="M8 11V8a4 4 0 1 1 8 0v3" />
+                    </svg>
+                  )}
+                  {statusLabel(s)}
+                </span>
               </button>
             );
           })}
         </div>
+        {SYSTEM_ONLY_STATUSES.length > 0 && (
+          <span className="text-[11px] text-subtle">
+            {SYSTEM_ONLY_STATUSES.map((s) => statusLabel(s))
+              .join(', ')}{' '}
+            — set by the system only, not selectable.
+          </span>
+        )}
       </label>
 
       {/* Notes */}
       <label className="flex flex-col gap-1.5">
         <span className="text-xs font-medium text-muted">Notes</span>
         <textarea
-          value={draftNotes}
-          onChange={(e) => setDraftNotes(e.target.value)}
+          value={draft.statusNotes}
+          onChange={(e) => onDraftChange({ statusNotes: e.target.value })}
           rows={3}
           placeholder="Add an internal note about this cart…"
+          disabled={saving}
           className="input resize-y"
         />
       </label>
-
-      {/* Feedback */}
-      {success && (
-        <div className="text-xs font-medium text-success bg-success-soft border border-success/20 rounded-md px-3 py-2">
-          Status saved.
-        </div>
-      )}
-      {error && (
-        <div className="text-xs font-medium text-danger bg-danger-soft border border-danger/20 rounded-md px-3 py-2">
-          {error}
-        </div>
-      )}
-
-      <div className="flex items-center gap-3">
-        <button
-          type="button"
-          onClick={handleSave}
-          disabled={saving || !dirty}
-          className="btn-primary flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          {saving && (
-            <span className="h-3.5 w-3.5 rounded-full border-2 border-white/40 border-t-white animate-spin" />
-          )}
-          {saving ? 'Saving…' : 'Save status'}
-        </button>
-        {!dirty && !success && (
-          <span className="text-xs text-subtle">No changes</span>
-        )}
-      </div>
     </div>
   );
 }

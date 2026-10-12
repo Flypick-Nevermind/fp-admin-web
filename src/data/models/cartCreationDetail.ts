@@ -25,6 +25,7 @@ export interface CartCreationDetailItemDTO {
   cart_id: string;
   cart: CartCreationProductDTO;
   detail_notes: string;
+  user_notes: string;
   is_reject: boolean;
   created_at: string;
   updated_at: string;

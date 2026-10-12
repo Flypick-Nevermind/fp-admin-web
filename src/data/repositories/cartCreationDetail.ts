@@ -62,6 +62,7 @@ function toItem(dto: CartCreationDetailItemDTO): CartCreationDetailItem {
     cartId: dto.cart_id,
     cart: toProduct(dto.cart),
     detailNotes: dto.detail_notes ?? '',
+    userNotes: dto.user_notes ?? '',
     isReject: dto.is_reject,
     createdAt: dto.created_at,
     updatedAt: dto.updated_at,

@@ -28,6 +28,7 @@ export interface CartCreationDetailItem {
   cartId: string;
   cart: CartCreationProduct;
   detailNotes: string;
+  userNotes: string;
   isReject: boolean;
   createdAt: string;
   updatedAt: string;

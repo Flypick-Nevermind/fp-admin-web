@@ -224,6 +224,18 @@ export function CartItemEditor({
       </div>
 
       <label className="flex flex-col gap-1.5">
+        <span className="text-xs font-medium text-muted">User notes</span>
+        <textarea
+          value={item.userNotes}
+          readOnly
+          disabled
+          rows={2}
+          placeholder="No user notes"
+          className="input resize-y !bg-app-surface !text-subtle !border-border cursor-not-allowed"
+        />
+      </label>
+
+      <label className="flex flex-col gap-1.5">
         <span className="text-xs font-medium text-muted">
           Detail notes{' '}
           <span className="text-danger">· required</span>

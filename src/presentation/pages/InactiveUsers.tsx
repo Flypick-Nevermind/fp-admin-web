@@ -31,9 +31,6 @@ export function InactiveUsersPage() {
           </p>
         </div>
         <button onClick={reload} className="btn-secondary">
-          <svg viewBox="0 0 16 16" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="1.6">
-            <path d="M13.5 8a5.5 5.5 0 1 1-1.6-3.9M13.5 2.5v3h-3" />
-          </svg>
           Refresh
         </button>
       </header>

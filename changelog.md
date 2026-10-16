@@ -3,7 +3,22 @@
 Format mengikuti [Keep a Changelog](https://keepachangelog.com) dan
 [Semantic Versioning](https://semver.org).
 
-## [Unreleased] — 0.4.0 (assigned carts + metrik live + kontrak login)
+## [Unreleased] — 0.5.0 (integrasi customer orders + detail & status flow)
+
+### Added
+- **Modul Customer Orders (`/admin/orders` & `/admin/orders/:id`)**:
+  - `core/entities/order.ts`: domain types (`OrderListItem`, `OrderDetail`, `OrderItem`, `OrderStatus`, `PaymentStatus`, dsb.).
+  - `core/usecases/order.ts`: ports (`OrderRepository`) + use cases (`GetOrdersUseCase`, `GetOrderDetailUseCase`, `UpdateOrderStatusUseCase`).
+  - `data/models/order.ts`: wire DTOs untuk paginated list, detail with items, dan payload update status.
+  - `data/datasources/orders.ts`: HTTP client untuk `/orders` (list + filter status), `/orders/:id`, dan `/orders/status`.
+  - `data/repositories/orders.ts`: repository implementation + DTO to domain mappers.
+  - `shared/utils/order.ts` & `format.ts`: badges warna status order/pembayaran, labels, dan helper `formatIdr`.
+  - `presentation/hooks/useOrders.ts` & `useOrderDetail.ts`: composition roots untuk list paginated filterable & status mutation.
+  - `presentation/pages/Orders.tsx`: tabel responsif customer orders dengan status tabs, search filter, pagination, dan direct link detail.
+  - `presentation/pages/OrderDetail.tsx`: tampilan detail komprehensif (daftar barang Taobao/Tmall, breakdown ongkir/jasa, data pembeli & alamat pengiriman, info transfer manual/struk) dilengkapi quick action (Verifikasi Pembayaran & Proses, Kirim, Selesai) serta modal ubah status kustom.
+  - Router `/admin/orders` dan `/admin/orders/:id` terhubung ke layout admin.
+
+## [0.4.0] — (assigned carts + metrik live + kontrak login)
 
 ### Added
 - **Tab Assigned Carts** (`/admin/assigned-carts`):

@@ -8,6 +8,14 @@ export function formatCurrency(n: number, currency = 'USD'): string {
   }).format(n);
 }
 
+export function formatIdr(n: number): string {
+  return new Intl.NumberFormat('id-ID', {
+    style: 'currency',
+    currency: 'IDR',
+    maximumFractionDigits: 0,
+  }).format(n);
+}
+
 export function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString('en-US', {
     month: 'short',

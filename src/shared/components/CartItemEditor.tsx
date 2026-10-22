@@ -106,6 +106,10 @@ export function CartItemEditor({
             src={resolveImageSrc(src)}
             alt=""
             className="h-14 w-14 rounded-md object-cover bg-app-surface border border-border"
+            onError={(e) => {
+              (e.target as HTMLImageElement).src =
+                'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" fill="%23666"><rect width="100%" height="100%" fill="%23222"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" fill="%23888" font-size="10">No Image</text></svg>';
+            }}
           />
         ))}
         {addedImages.map((objectKey) => (
@@ -114,6 +118,10 @@ export function CartItemEditor({
               src={resolveImageSrc(objectKey)}
               alt=""
               className="h-14 w-14 rounded-md object-cover bg-app-surface border border-border"
+              onError={(e) => {
+                (e.target as HTMLImageElement).src =
+                  'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" fill="%23666"><rect width="100%" height="100%" fill="%23222"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" fill="%23888" font-size="10">No Image</text></svg>';
+              }}
             />
             <button
               type="button"

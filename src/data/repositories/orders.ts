@@ -133,6 +133,7 @@ function toOrderListItem(dto: AdminOrderListItemDTO): OrderListItem {
     shippingCity: dto.shipping_city,
     shippingPostalCode: dto.shipping_postal_code || '',
     shippingNotes: dto.shipping_notes || '',
+    paymentProofUrl: dto.payment_proof_url || '',
     createdAt: dto.created_at,
     updatedAt: dto.updated_at,
     itemCount: dto.item_count,

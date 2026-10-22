@@ -50,7 +50,9 @@ function toProduct(dto: CartCreationProductDTO): CartCreationProduct {
     cartUrl: dto.cart_url,
     cartTitle: dto.cart_title ?? '',
     cartPrice: dto.cart_price ?? '',
-    cartImages: dto.cart_images ?? [],
+    cartImages: (dto.cart_images ?? [])
+      .map((img) => (typeof img === 'string' ? img : img?.cart_image_value ?? ''))
+      .filter((s): s is string => Boolean(s && s.trim())),
     createdAt: dto.created_at,
     updatedAt: dto.updated_at,
   };

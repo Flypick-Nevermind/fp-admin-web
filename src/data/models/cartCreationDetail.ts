@@ -9,16 +9,25 @@ export interface CartCreationDetailUserDTO {
   user_phone: string;
 }
 
+export interface CartImageDTO {
+  cart_image_id?: string;
+  cart_id?: string;
+  cart_image_value?: string;
+  created_at?: string;
+  updated_at?: string;
+}
+
 export interface CartCreationProductDTO {
   cart_id: string;
   user_id: string;
   cart_url: string;
   cart_title: string;
   cart_price: string;
-  cart_images: string[];
+  cart_images: (string | CartImageDTO)[];
   created_at: string;
   updated_at: string;
 }
+
 
 export interface CartCreationDetailItemDTO {
   detail_id: string;

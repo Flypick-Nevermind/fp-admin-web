@@ -416,13 +416,41 @@ export function OrderDetailPage() {
                 </span>
               </div>
               <div>
-                <span className="text-subtle block text-[10px]">Catatan Pengiriman / Bukti Transfer</span>
+                <span className="text-subtle block text-[10px]">Catatan Pengiriman & Bukti Struk Transfer</span>
+                {order.paymentProofUrl && (
+                  <div className="mt-2 mb-2 p-2.5 bg-app-surface rounded-lg border border-emerald-500/30">
+                    <span className="text-[10px] text-emerald-400 font-bold block mb-1">
+                      📸 Foto Struk Transfer Customer:
+                    </span>
+                    <a
+                      href={resolveImageSrc(order.paymentProofUrl)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="group block relative overflow-hidden rounded border border-border hover:border-emerald-500 transition-all max-w-[200px]"
+                    >
+                      <img
+                        src={resolveImageSrc(order.paymentProofUrl)}
+                        alt="Bukti Struk Transfer"
+                        className="w-full h-28 object-cover rounded group-hover:scale-105 transition-transform"
+                        onError={(e) => {
+                          (e.target as HTMLImageElement).src =
+                            'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" fill="%23666"><rect width="100%" height="100%" fill="%23222"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" fill="%23888" font-size="10">Gagal Memuat Struk</text></svg>';
+                        }}
+                      />
+                      <span className="block text-center text-[10px] text-emerald-300 font-medium py-1 bg-black/60 backdrop-blur-xs">
+                        Buka Struk Asli ↗
+                      </span>
+                    </a>
+                  </div>
+                )}
                 {order.shippingNotes ? (
                   <div className="p-3 bg-app-surface/60 rounded-lg border border-border text-xs text-text leading-relaxed mt-1">
                     {order.shippingNotes}
                   </div>
                 ) : (
-                  <span className="text-muted text-xs italic">Tidak ada catatan</span>
+                  !order.paymentProofUrl && (
+                    <span className="text-muted text-xs italic">Tidak ada catatan</span>
+                  )
                 )}
               </div>
             </div>

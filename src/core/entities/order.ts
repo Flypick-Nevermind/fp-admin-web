@@ -54,6 +54,7 @@ export interface OrderListItem {
   shippingCity: string;
   shippingPostalCode: string;
   shippingNotes: string;
+  paymentProofUrl?: string;
   createdAt: string; // ISO 8601
   updatedAt: string; // ISO 8601
   itemCount: number;

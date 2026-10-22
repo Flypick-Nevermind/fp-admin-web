@@ -39,6 +39,7 @@ export interface AdminOrderListItemDTO {
   shipping_city: string;
   shipping_postal_code?: string;
   shipping_notes?: string;
+  payment_proof_url?: string;
   created_at: string;
   updated_at: string;
   item_count: number;

@@ -16,6 +16,12 @@ export function formatIdr(n: number): string {
   }).format(n);
 }
 
+export function formatCny(n: number): string {
+  return `¥${new Intl.NumberFormat('id-ID', {
+    maximumFractionDigits: 2,
+  }).format(n)}`;
+}
+
 export function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString('en-US', {
     month: 'short',

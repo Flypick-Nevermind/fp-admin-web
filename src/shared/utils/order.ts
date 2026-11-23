@@ -52,3 +52,37 @@ export function paymentStatusLabel(status: PaymentStatus | string): string {
   };
   return map[status] ?? status;
 }
+
+export type PackagingOption = 'WITH_BOX' | 'NO_BOX';
+
+export interface ParsedItemNotes {
+  packaging: PackagingOption | null;
+  remainingNotes: string;
+}
+
+/**
+ * Extract `WITH_BOX` / `NO_BOX` packaging option embedded in `item.notes`
+ * (e.g. "Opsi Kemasan: NO_BOX (Lepas kardus) • Terverifikasi...") so the UI
+ * can render it as a dedicated badge without duplicating it in notes.
+ */
+export function parseOrderItemNotes(notes: string): ParsedItemNotes {
+  if (!notes) return { packaging: null, remainingNotes: '' };
+
+  const segmentRegex =
+    /(?:Opsi\s+Kemasan\s*:\s*)?(WITH_BOX|NO_BOX)(?:\s*\([^)]*\))?/i;
+  const match = notes.match(segmentRegex);
+  if (!match) {
+    return { packaging: null, remainingNotes: notes.trim() };
+  }
+
+  const packaging = match[1].toUpperCase() as PackagingOption;
+  const remainingNotes = notes
+    .replace(segmentRegex, '')
+    .replace(/\s*[•·|]\s*(?=[•·|])/g, ' ')
+    .replace(/^\s*[•·|\-–—]+\s*/g, '')
+    .replace(/\s*[•·|\-–—]+\s*$/g, '')
+    .replace(/\s{2,}/g, ' ')
+    .trim();
+
+  return { packaging, remainingNotes };
+}

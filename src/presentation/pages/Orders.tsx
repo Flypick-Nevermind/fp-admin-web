@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useOrders } from '../hooks/useOrders';
+import { useExchangeRate } from '../hooks/useExchangeRate';
 import {
   orderStatusBadgeClass,
   orderStatusLabel,
@@ -35,6 +36,8 @@ export function OrdersPage() {
     setStatusFilter,
     reload,
   } = useOrders();
+  const { exchangeRate } = useExchangeRate();
+  const cnyRate = exchangeRate?.cnyToIdr ?? null;
 
   const [search, setSearch] = useState('');
 
@@ -179,7 +182,9 @@ export function OrdersPage() {
                     {/* Total & Items */}
                     <td className="py-3.5 px-4 align-top">
                       <div className="font-semibold text-text text-xs">
-                        {formatIdr(ord.totalAmount)}
+                        {cnyRate !== null
+                          ? formatIdr(ord.totalItemPrice * cnyRate)
+                          : '—'}
                       </div>
                       <div className="text-[11px] text-muted mt-0.5">
                         {ord.itemCount} barang

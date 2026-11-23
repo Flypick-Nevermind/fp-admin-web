@@ -1,14 +1,16 @@
 import { useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useOrderDetail } from '../hooks/useOrderDetail';
+import { useExchangeRate } from '../hooks/useExchangeRate';
 import type { OrderStatus, PaymentStatus } from '@/core/entities/order';
 import {
   orderStatusBadgeClass,
   orderStatusLabel,
+  parseOrderItemNotes,
   paymentStatusBadgeClass,
   paymentStatusLabel,
 } from '@/shared/utils/order';
-import { formatIdr } from '@/shared/utils/format';
+import { formatCny, formatIdr } from '@/shared/utils/format';
 import { formatTimestamp, shopLabel } from '@/shared/utils/cart';
 import { resolveImageSrc } from '@/shared/utils/image';
 import { ConfirmModal } from '@/shared/components/ConfirmModal';
@@ -18,6 +20,8 @@ export function OrderDetailPage() {
   const navigate = useNavigate();
   const { order, loading, error, updating, updateStatus, reload } =
     useOrderDetail(id);
+  const { exchangeRate } = useExchangeRate();
+  const cnyRate = exchangeRate?.cnyToIdr ?? null;
 
   // Quick Action / Custom Status Modal states
   const [modalMode, setModalMode] = useState<
@@ -230,7 +234,11 @@ export function OrderDetailPage() {
             </div>
 
             <div className="divide-y divide-border">
-              {order.items.map((item) => (
+              {order.items.map((item) => {
+                const { packaging, remainingNotes } = parseOrderItemNotes(
+                  item.notes,
+                );
+                return (
                 <div key={item.orderDetailId} className="p-4 flex gap-4 items-start">
                   {/* Product Image */}
                   <div className="w-16 h-16 rounded-lg overflow-hidden bg-app-surface border border-border shrink-0 flex items-center justify-center">
@@ -251,10 +259,20 @@ export function OrderDetailPage() {
 
                   {/* Product Info */}
                   <div className="flex-1 min-w-0 space-y-1">
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-wrap items-center gap-2">
                       <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-card border border-border text-accent uppercase font-mono">
                         {shopLabel(item.productUrl)}
                       </span>
+                      {packaging === 'WITH_BOX' && (
+                        <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-info-soft text-info border border-info/20">
+                          📦 With Box
+                        </span>
+                      )}
+                      {packaging === 'NO_BOX' && (
+                        <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-warning-soft text-warning border border-warning/20">
+                          📦 No Box (Lepas Kardus)
+                        </span>
+                      )}
                       {item.productUrl && (
                         <a
                           href={item.productUrl}
@@ -271,49 +289,56 @@ export function OrderDetailPage() {
                       {item.productTitle}
                     </h3>
 
-                    {item.notes && (
+                    {remainingNotes && (
                       <p className="text-[11px] text-muted bg-app-surface/60 border border-border/80 rounded px-2 py-1 inline-block mt-1">
-                        📝 {item.notes}
+                        📝 {remainingNotes}
                       </p>
                     )}
 
                     <div className="flex items-center justify-between pt-1">
                       <span className="text-xs text-muted">
-                        {formatIdr(item.productPrice)} × {item.quantity}
+                        {formatCny(item.productPrice)}
+                        {cnyRate !== null && (
+                          <span className="text-subtle">
+                            {' '}({formatIdr(item.productPrice * cnyRate)})
+                          </span>
+                        )}{' '}
+                        × {item.quantity}
                       </span>
                       <span className="text-xs font-semibold text-text font-mono">
-                        {formatIdr(item.subtotal)}
+                        {cnyRate !== null
+                          ? formatIdr(item.subtotal * cnyRate)
+                          : formatCny(item.subtotal)}
                       </span>
                     </div>
                   </div>
                 </div>
-              ))}
+                );
+              })}
             </div>
 
             {/* Price Breakdown Footer */}
             <div className="p-4 bg-app-surface/40 border-t border-border space-y-2">
               <div className="flex justify-between text-xs text-muted">
-                <span>Subtotal Barang:</span>
-                <span className="font-mono text-text font-medium">
-                  {formatIdr(order.totalItemPrice)}
+                <span>
+                  Subtotal Barang
+                  {cnyRate !== null
+                    ? ` (${formatCny(order.totalItemPrice)} × ${formatIdr(cnyRate)})`
+                    : ''}
+                  :
                 </span>
-              </div>
-              <div className="flex justify-between text-xs text-muted">
-                <span>Biaya Layanan &amp; Handling:</span>
                 <span className="font-mono text-text font-medium">
-                  {formatIdr(order.serviceFee)}
-                </span>
-              </div>
-              <div className="flex justify-between text-xs text-muted">
-                <span>Biaya Pengiriman Internasional/Domestik:</span>
-                <span className="font-mono text-text font-medium">
-                  {formatIdr(order.shippingFee)}
+                  {cnyRate !== null
+                    ? formatIdr(order.totalItemPrice * cnyRate)
+                    : formatCny(order.totalItemPrice)}
                 </span>
               </div>
               <div className="border-t border-border pt-2 flex justify-between text-sm font-bold text-text">
                 <span>Total Tagihan:</span>
                 <span className="font-mono text-accent text-base">
-                  {formatIdr(order.totalAmount)}
+                  {cnyRate !== null
+                    ? formatIdr(order.totalItemPrice * cnyRate)
+                    : '—'}
                 </span>
               </div>
             </div>
@@ -465,7 +490,12 @@ export function OrderDetailPage() {
         description={
           <>
             Konfirmasi bahwa dana tagihan sebesar{' '}
-            <strong className="text-accent">{formatIdr(order.totalAmount)}</strong> telah
+            <strong className="text-accent">
+              {cnyRate !== null
+                ? formatIdr(order.totalItemPrice * cnyRate)
+                : '—'}
+            </strong>{' '}
+            telah
             masuk ke rekening mutasi bank Flypick. Status pesanan akan diubah menjadi{' '}
             <strong>DIPROSES</strong> dan pembayaran menjadi <strong>LUNAS</strong>.
           </>

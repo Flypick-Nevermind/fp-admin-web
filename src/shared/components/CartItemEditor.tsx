@@ -53,9 +53,8 @@ export function CartItemEditor({
   const existingImages = item.cart.cartImages;
   const notesEmpty = detailNotes.trim().length === 0;
 
-  async function handleUpload(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  async function uploadFile(file: File) {
+    if (isReject || saving || uploading) return;
     setUploading(true);
     setUploadError(null);
     try {
@@ -65,8 +64,70 @@ export function CartItemEditor({
       setUploadError(err instanceof Error ? err.message : 'Upload failed.');
     } finally {
       setUploading(false);
-      if (fileRef.current) fileRef.current.value = '';
     }
+  }
+
+  async function handleUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    await uploadFile(file);
+    if (fileRef.current) fileRef.current.value = '';
+  }
+
+  async function handlePasteButton() {
+    if (isReject || saving || uploading) return;
+    if (!navigator.clipboard?.read) {
+      setUploadError('Clipboard paste button is not supported in this browser. Try Ctrl+V / Cmd+V on this card.');
+      return;
+    }
+
+    setUploadError(null);
+    try {
+      const clipboardItems = await navigator.clipboard.read();
+      for (const clipboardItem of clipboardItems) {
+        const imageType = clipboardItem.types.find((t) => t.startsWith('image/'));
+        if (!imageType) continue;
+        const blob = await clipboardItem.getType(imageType);
+        const ext = imageType.split('/')[1]?.split(';')[0] || 'png';
+        const file = new File([blob], `pasted-image.${ext}`, { type: imageType });
+        await uploadFile(file);
+        return;
+      }
+      setUploadError('No image found in clipboard. Copy an image first.');
+    } catch (err) {
+      if (err instanceof DOMException && err.name === 'NotAllowedError') {
+        setUploadError('Clipboard permission denied. Press Ctrl+V / Cmd+V on this card instead.');
+      } else {
+        setUploadError(err instanceof Error ? err.message : 'Failed to read image from clipboard.');
+      }
+    }
+  }
+
+  async function handleCardPaste(e: React.ClipboardEvent<HTMLDivElement>) {
+    if (isReject || saving || uploading) return;
+    const clipboardData = e.clipboardData;
+    if (!clipboardData) return;
+
+    const items = Array.from(clipboardData.items ?? []);
+    const target = e.target;
+    const isTextInput =
+      target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement;
+    const hasPlainText = items.some((item) => item.type === 'text/plain');
+
+    if (isTextInput && hasPlainText) return;
+
+    const imageItem = items.find(
+      (item) => item.kind === 'file' && item.type.startsWith('image/'),
+    );
+    const imageFile =
+      imageItem?.getAsFile() ??
+      Array.from(clipboardData.files ?? []).find((f) => f.type.startsWith('image/')) ??
+      null;
+
+    if (!imageFile) return;
+
+    e.preventDefault();
+    await uploadFile(imageFile);
   }
 
   /**
@@ -85,7 +146,11 @@ export function CartItemEditor({
   }
 
   return (
-    <div className="card card-hover p-5 flex flex-col gap-4">
+    <div
+      tabIndex={-1}
+      onPaste={handleCardPaste}
+      className="card card-hover p-5 flex flex-col gap-4 focus:outline-none focus-within:border-accent/40"
+    >
       <div className="flex items-center justify-between gap-2">
         <span className="badge">
           <span className="h-1.5 w-1.5 rounded-full bg-accent" />
@@ -140,33 +205,48 @@ export function CartItemEditor({
           </div>
         ))}
         {!isReject && (
-          <label
-            className={`h-14 w-14 rounded-md border border-dashed ${
-              uploading ? 'border-accent text-accent' : 'border-border text-subtle'
-            } flex flex-col items-center justify-center gap-0.5 cursor-pointer hover:border-accent hover:text-accent transition-colors`}
-          >
-            {uploading ? (
-              <>
-                <span className="h-3.5 w-3.5 rounded-full border-2 border-accent/40 border-t-accent animate-spin" />
-                <span className="text-[9px]">Uploading</span>
-              </>
-            ) : (
-              <>
-                <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.7">
-                  <path d="M12 5v14M5 12h14" />
-                </svg>
-                <span className="text-[9px]">Upload</span>
-              </>
-            )}
-            <input
-              ref={fileRef}
-              type="file"
-              accept="image/*"
-              className="hidden"
-              onChange={handleUpload}
+          <>
+            <label
+              className={`h-14 w-14 rounded-md border border-dashed ${
+                uploading ? 'border-accent text-accent' : 'border-border text-subtle'
+              } flex flex-col items-center justify-center gap-0.5 cursor-pointer hover:border-accent hover:text-accent transition-colors`}
+            >
+              {uploading ? (
+                <>
+                  <span className="h-3.5 w-3.5 rounded-full border-2 border-accent/40 border-t-accent animate-spin" />
+                  <span className="text-[9px]">Uploading</span>
+                </>
+              ) : (
+                <>
+                  <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.7">
+                    <path d="M12 5v14M5 12h14" />
+                  </svg>
+                  <span className="text-[9px]">Upload</span>
+                </>
+              )}
+              <input
+                ref={fileRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={handleUpload}
+                disabled={uploading || saving}
+              />
+            </label>
+            <button
+              type="button"
+              onClick={handlePasteButton}
               disabled={uploading || saving}
-            />
-          </label>
+              title="Paste copied image (or press Ctrl+V / Cmd+V)"
+              className="h-14 w-14 rounded-md border border-dashed border-border text-subtle flex flex-col items-center justify-center gap-0.5 cursor-pointer hover:border-accent hover:text-accent transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="9" y="9" width="13" height="13" rx="2" />
+                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+              </svg>
+              <span className="text-[9px]">Paste</span>
+            </button>
+          </>
         )}
         {isReject && (
           <span className="text-xs font-medium text-subtle self-center">

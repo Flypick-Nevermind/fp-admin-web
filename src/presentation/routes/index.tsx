@@ -8,6 +8,8 @@ import { AssignedCartsPage } from '@/presentation/pages/AssignedCarts';
 import { CartCreationDetailPage } from '@/presentation/pages/CartCreationDetail';
 import { OrdersPage } from '@/presentation/pages/Orders';
 import { OrderDetailPage } from '@/presentation/pages/OrderDetail';
+import { SettingsPage } from '@/presentation/pages/Settings';
+import { ExchangeRateSettingsPage } from '@/presentation/pages/ExchangeRateSettings';
 import { RequireAuth } from './RequireAuth';
 import {
   createBrowserRouter,
@@ -50,7 +52,20 @@ export const appRouter = createBrowserRouter([
       { path: 'inactive-users', element: <InactiveUsersPage /> },
       { path: 'orders', element: <OrdersPage /> },
       { path: 'orders/:id', element: <OrderDetailPage /> },
-      { path: 'settings', element: <PlaceholderPage title="Settings" /> },
+      {
+        path: 'settings',
+        element: <SettingsPage />,
+        children: [
+          {
+            index: true,
+            element: <Navigate to="/admin/settings/exchange-rate" replace />,
+          },
+          {
+            path: 'exchange-rate',
+            element: <ExchangeRateSettingsPage />,
+          },
+        ],
+      },
     ],
   },
   {
